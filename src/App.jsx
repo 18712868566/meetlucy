@@ -214,12 +214,13 @@ const defaultSocials = {
   tiktok: 'https://tiktok.com'
 };
 
-const IMAGE_OSS_DEFAULT_HOSTS = new Set([
+const IMAGE_OSS_HOSTS = new Set([
   'lucy-images.oss-cn-hongkong.aliyuncs.com',
   'lucy-images.oss-cn-hongkong-internal.aliyuncs.com',
+  'lucy-images.oss-accelerate.aliyuncs.com',
 ]);
 
-const IMAGE_OSS_ACCEL_HOST = 'lucy-images.oss-accelerate.aliyuncs.com';
+const IMAGE_CDN_HOST = 'img.meetlucy.shop';
 
 function normalizeImageUrl(input) {
   if (!input || typeof input !== 'string') return input;
@@ -229,8 +230,9 @@ function normalizeImageUrl(input) {
   } catch {
     return input;
   }
-  if (!IMAGE_OSS_DEFAULT_HOSTS.has(url.hostname)) return input.split('#')[0];
-  url.hostname = IMAGE_OSS_ACCEL_HOST;
+  if (!IMAGE_OSS_HOSTS.has(url.hostname)) return input.split('#')[0];
+  url.hostname = IMAGE_CDN_HOST;
+  url.protocol = 'https:';
   url.search = '';
   url.hash = '';
   return url.toString();
