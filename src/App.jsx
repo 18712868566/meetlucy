@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, ZoomIn, Link as LinkIcon, Leaf, Feather, BookOpen, Compass, Sparkles, Palette, MessageCircleHeart } from 'lucide-react';
+import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, ZoomIn, Link as LinkIcon, Leaf, Feather, BookOpen, Compass, Sparkles, Palette, MessageCircleHeart, Inbox, CheckCircle, MessageSquare, AlertTriangle } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -143,6 +143,37 @@ const t = {
     shanshui: "Verdant Shanshui",
     xiyi: "Ink Wash · Xieyi",
     modern: "Contemporary Ink",
+    inquiryTypeLabel: "Inquiry Type",
+    inquiryTypes: [
+      { value: 'collect', label: 'Collection / Acquisition' },
+      { value: 'exhibition', label: 'Exhibition · Venue' },
+      { value: 'education', label: 'Aesthetic Education · Collaboration' },
+      { value: 'press', label: 'Press · Media' },
+      { value: 'other', label: 'Other' }
+    ],
+    nameHint: "Please enter your name (at least 2 characters)",
+    contactHint: "Email or phone number (at least 6 characters)",
+    msgHint: "Message (at least 5 characters)",
+    sendBtn: "Send Message",
+    sendingBtn: "Sending…",
+    msgSuccess: "✓ Message received. We will contact you shortly.",
+    msgFallbackHint: "✓ Fallback: opening your email client to deliver this message.",
+    msgError: "Failed to send. Please try again or email us directly.",
+    msgRateLimit: "You just sent a message. Please wait a moment before sending another.",
+    adminMessagesTab: "Inbox",
+    msgStatusNew: "New",
+    msgStatusRead: "Read",
+    msgStatusReplied: "Replied",
+    msgReplyBtn: "Reply via Email",
+    msgMarkReadBtn: "Mark as Read",
+    msgMarkNewBtn: "Mark as New",
+    msgMarkRepliedBtn: "Mark Replied",
+    msgDeleteBtn: "Delete",
+    msgNoData: "No messages yet. Once a visitor leaves a message, it will appear here.",
+    msgInquiryTitle: "Type",
+    msgTimeTitle: "Time",
+    msgStatusTitle: "Status",
+    msgActionsTitle: "Actions",
     detailBtn: "High-Res Details",
     contactTag: "Get In Touch",
     contactTitle1: "Looking Forward to",
@@ -150,7 +181,6 @@ const t = {
     nameLabel: "Your Name",
     contactLabel: "Contact Info",
     msgLabel: "Your Message",
-    sendBtn: "Send Message",
     adminTitle: "Secure Cloud CMS (URL Mode)",
     saveSuccess: "✓ Successfully synced to cloud database! Global visitors can now see updates in real-time.",
     saveBtn: "Save Changes to Cloud",
@@ -193,6 +223,37 @@ const t = {
     shanshui: "青绿山水",
     xiyi: "水墨写意",
     modern: "当代国潮",
+    inquiryTypeLabel: "咨询类型",
+    inquiryTypes: [
+      { value: 'collect', label: '作品收藏 / 购买' },
+      { value: 'exhibition', label: '预约展陈 / 场地' },
+      { value: 'education', label: '美育合作 / 讲座' },
+      { value: 'press', label: '媒体采访 / 品牌' },
+      { value: 'other', label: '其他事项' }
+    ],
+    nameHint: "请输入您的姓名（至少 2 个字符）",
+    contactHint: "邮箱或手机号（至少 6 个字符）",
+    msgHint: "留言内容（至少 5 个字符）",
+    sendBtn: "发送留言",
+    sendingBtn: "正在发送…",
+    msgSuccess: "✓ 留言已发送，我们会尽快与您联系。",
+    msgFallbackHint: "✓ 正在打开您的邮件客户端以发送该留言。",
+    msgError: "发送失败，请稍后重试或直接通过邮箱联系我们。",
+    msgRateLimit: "您刚刚发送过留言，请稍候再试。",
+    adminMessagesTab: "留言管理",
+    msgStatusNew: "待联系",
+    msgStatusRead: "已查看",
+    msgStatusReplied: "已回复",
+    msgReplyBtn: "邮件回复",
+    msgMarkReadBtn: "标为已查看",
+    msgMarkNewBtn: "标为待联系",
+    msgMarkRepliedBtn: "标为已回复",
+    msgDeleteBtn: "删除留言",
+    msgNoData: "暂无留言。访客提交后会在这里实时显示。",
+    msgInquiryTitle: "咨询类型",
+    msgTimeTitle: "提交时间",
+    msgStatusTitle: "处理状态",
+    msgActionsTitle: "操作",
     detailBtn: "高精度原画细节",
     contactTag: "Get In Touch",
     contactTitle1: "期许与您",
@@ -200,7 +261,6 @@ const t = {
     nameLabel: "尊姓大名",
     contactLabel: "联系方式",
     msgLabel: "留言内容",
-    sendBtn: "发送留言",
     adminTitle: "安全云端内容管理 (链接模式)",
     saveSuccess: "✓ 成功同步至云端数据库！全球访客已可实时看到更新。",
     saveBtn: "保存更改至云端数据库",
@@ -325,7 +385,109 @@ export default function App() {
   const [aboutHover, setAboutHover] = useState(false);
   const [aboutAutoPausedByUser, setAboutAutoPausedByUser] = useState(false);
   const [aboutImageStatus, setAboutImageStatus] = useState({});
-  const [selectedWork, setSelectedWork] = useState(null);
+  const [contactPayload, setContactPayload] = useState({
+    name: '',
+    contact: '',
+    message: '',
+    inquiry_type: 'collect'
+  });
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const [messageBanner, setMessageBanner] = useState(null); // {level:'ok|warn|error', text}
+  const [messages, setMessages] = useState([]);
+
+  function toastMessageBanner(level, text, duration = 7000) {
+    setMessageBanner({ level, text });
+    setTimeout(() => setMessageBanner((cur) => (cur && cur.text === text ? null : cur)), duration);
+  }
+
+  const isContactValid =
+    String(contactPayload.name || '').trim().length >= 2 &&
+    String(contactPayload.contact || '').trim().length >= 6 &&
+    String(contactPayload.message || '').trim().length >= 5;
+
+  const DEFAULT_NOTIFY_EMAIL = '617105706@qq.com';
+
+  function openMailtoReply(message) {
+    const to = DEFAULT_NOTIFY_EMAIL;
+    const inquiryLabel =
+      (currentT.inquiryTypes || []).find(i => i.value === message.inquiry_type)?.label ||
+      message.inquiry_type ||
+      '';
+    const subject = encodeURIComponent(`[Meet Lucy 官网留言] ${inquiryLabel ? `${inquiryLabel} · ` : ''}${message.name || '(匿名)'}`);
+    const body = encodeURIComponent(
+      `（此邮件为留言整理，请把收件人改为：${message.contact || '未知联系方式'} 实际回复）\n\n` +
+      `时间：${new Date(message.created_at || Date.now()).toLocaleString()}\n` +
+      `姓名：${message.name || ''}\n` +
+      `联系方式：${message.contact || ''}\n` +
+      `咨询类型：${inquiryLabel || message.inquiry_type || ''}\n\n` +
+      `留言内容：\n${message.message || ''}\n`
+    );
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  }
+
+  function openMailtoFallback() {
+    const inquiryLabel =
+      (currentT.inquiryTypes || []).find(i => i.value === contactPayload.inquiry_type)?.label ||
+      contactPayload.inquiry_type ||
+      '';
+    const to = DEFAULT_NOTIFY_EMAIL;
+    const subject = encodeURIComponent(`[Meet Lucy 官网留言] ${inquiryLabel ? `${inquiryLabel} · ` : ''}${contactPayload.name || ''}`);
+    const body = encodeURIComponent(
+      `姓名：${contactPayload.name || ''}\n` +
+      `联系方式：${contactPayload.contact || ''}\n` +
+      `咨询类型：${inquiryLabel || ''}\n\n` +
+      `${contactPayload.message || ''}\n`
+    );
+    window.location.href = `mailto:${to}?subject=${subject}&body=${body}`;
+  }
+
+  async function submitContactForm(e) {
+    if (e) e.preventDefault();
+    if (!isContactValid || sendingMessage) return;
+    try {
+      const LS_KEY = 'meetlucy_last_msg_at';
+      const last = Number(localStorage.getItem(LS_KEY) || '0');
+      const now = Date.now();
+      if (last && now - last < 60 * 1000) {
+        toastMessageBanner('warn', currentT.msgRateLimit);
+        return;
+      }
+
+      setSendingMessage(true);
+      const cleanPayload = {
+        inquiry_type: contactPayload.inquiry_type || 'other',
+        name: String(contactPayload.name || '').trim().slice(0, 120),
+        contact: String(contactPayload.contact || '').trim().slice(0, 200),
+        message: String(contactPayload.message || '').trim().slice(0, 2000),
+        created_at: new Date().toISOString(),
+        status: 'new'
+      };
+
+      let inserted = false;
+      if (supabase) {
+        try {
+          ensureSuccess(await supabase.from('contact_messages').insert(cleanPayload), 'Insert contact_messages failed');
+          inserted = true;
+          localStorage.setItem(LS_KEY, String(now));
+          setContactPayload({ name: '', contact: '', message: '', inquiry_type: 'collect' });
+          toastMessageBanner('ok', currentT.msgSuccess);
+        } catch (e) {
+          console.warn('Submit contact via Supabase failed, fallback to mailto.', e);
+          inserted = false;
+        }
+      }
+
+      if (!inserted) {
+        openMailtoFallback();
+        toastMessageBanner('warn', currentT.msgFallbackHint, 9000);
+      }
+    } catch (err) {
+      console.error(err);
+      toastMessageBanner('error', currentT.msgError);
+    } finally {
+      setSendingMessage(false);
+    }
+  }
 
   // 后台与认证状态
   const [isAdminOpen, setIsAdminOpen] = useState(false);
@@ -421,7 +583,7 @@ export default function App() {
 
       ensureSuccess(await supabase.from('about_data').delete().neq('id', 0), 'Delete about_data failed');
       if (aboutData.length > 0) {
-        const cleanAbout = aboutData.map(({ id, ...rest }) => ({
+        const cleanAbout = aboutData.map(({ id: _id, ...rest }) => ({
           ...rest,
           image: normalizeImageUrl(rest.image),
         }));
@@ -430,7 +592,7 @@ export default function App() {
 
       ensureSuccess(await supabase.from('works').delete().neq('id', 0), 'Delete works failed');
       if (works.length > 0) {
-        const cleanWorks = works.map(({ id, ...rest }) => ({
+        const cleanWorks = works.map(({ id: _id, ...rest }) => ({
           ...rest,
           material_zh: rest.material_zh ?? rest.material ?? null,
           material_en: rest.material_en ?? rest.material ?? null,
@@ -464,6 +626,62 @@ export default function App() {
       setLoading(false);
     }
   };
+
+  async function loadMessages() {
+    if (!supabase || !session) { setMessages([]); return; }
+    try {
+      const { data, error } = await supabase
+        .from('contact_messages')
+        .select('*')
+        .order('created_at', { ascending: false });
+      if (error) {
+        if (!/.*relation.*does not exist|PGRST202|Policies failed|not found/i.test(String(error.message || error))) {
+          throw error;
+        }
+        setMessages([]);
+        return;
+      }
+      setMessages(Array.isArray(data) ? data : []);
+    } catch (e) {
+      console.warn('Load contact messages failed:', e);
+      setMessages([]);
+    }
+  }
+
+  async function updateMessageStatus(id, nextStatus) {
+    if (!supabase || !session) return;
+    try {
+      const ensureSuccess = (result, label) => {
+        if (result?.error) throw new Error(`${label}: ${result.error.message}`);
+      };
+      ensureSuccess(
+        await supabase.from('contact_messages').update({ status: nextStatus }).eq('id', id),
+        'Update contact_messages status failed'
+      );
+      setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: nextStatus } : m)));
+    } catch (e) {
+      console.warn(e);
+      toastMessageBanner('error', currentT.msgError);
+    }
+  }
+
+  async function deleteMessage(id) {
+    if (!supabase || !session) return;
+    if (!window.confirm(lang === 'en' ? 'Delete this message permanently?' : '确认要永久删除这条留言吗？')) return;
+    try {
+      const ensureSuccess = (result, label) => {
+        if (result?.error) throw new Error(`${label}: ${result.error.message}`);
+      };
+      ensureSuccess(
+        await supabase.from('contact_messages').delete().eq('id', id),
+        'Delete contact_message failed'
+      );
+      setMessages((prev) => prev.filter((m) => m.id !== id));
+    } catch (e) {
+      console.warn(e);
+      toastMessageBanner('error', currentT.msgError);
+    }
+  }
 
   useEffect(() => {
     const currentT = t[lang] || t.en;
@@ -930,14 +1148,80 @@ export default function App() {
               <a href={socials.tiktok} target="_blank" rel="noreferrer" className="p-3 bg-[#141414] border border-white/5 rounded-sm text-xs text-stone-300 flex items-center gap-2"><TikTokIcon size={16} className="text-amber-300" />TikTok</a>
             </div>
           </div>
-          <div className="lg:col-span-7 bg-[#161616] p-8 md:p-14 border border-white/10 rounded-lg shadow-2xl">
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-6">
+          <div className="lg:col-span-7 bg-[#161616] p-8 md:p-14 border border-white/10 rounded-lg shadow-2xl relative">
+            <form onSubmit={submitContactForm} className="space-y-6">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div><label className="block text-[11px] text-stone-400 uppercase mb-2">{currentT.nameLabel}</label><input type="text" className="w-full bg-transparent border-b border-white/20 pb-2 text-sm text-white focus:outline-none focus:border-amber-300" /></div>
-                <div><label className="block text-[11px] text-stone-400 uppercase mb-2">{currentT.contactLabel}</label><input type="text" className="w-full bg-transparent border-b border-white/20 pb-2 text-sm text-white focus:outline-none focus:border-amber-300" /></div>
+                <div>
+                  <label className="block text-[11px] text-stone-400 uppercase mb-2">{currentT.nameLabel}</label>
+                  <input
+                    type="text"
+                    value={contactPayload.name}
+                    onChange={(e) => setContactPayload((p) => ({ ...p, name: e.target.value }))}
+                    placeholder={currentT.nameHint}
+                    className="w-full bg-transparent border-b border-white/20 pb-2 text-sm text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-300"
+                  />
+                </div>
+                <div>
+                  <label className="block text-[11px] text-stone-400 uppercase mb-2">{currentT.contactLabel}</label>
+                  <input
+                    type="text"
+                    value={contactPayload.contact}
+                    onChange={(e) => setContactPayload((p) => ({ ...p, contact: e.target.value }))}
+                    placeholder={currentT.contactHint}
+                    className="w-full bg-transparent border-b border-white/20 pb-2 text-sm text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-300"
+                  />
+                </div>
               </div>
-              <div><label className="block text-[11px] text-stone-400 uppercase mb-2">{currentT.msgLabel}</label><textarea rows={3} className="w-full bg-transparent border-b border-white/20 pb-2 text-sm text-white focus:outline-none focus:border-amber-300 resize-none"></textarea></div>
-              <button type="submit" className="w-full py-4 bg-white text-black font-medium tracking-[0.3em] hover:bg-amber-300 transition-all text-xs rounded-sm">{currentT.sendBtn}</button>
+
+              <div>
+                <label className="block text-[11px] text-stone-400 uppercase mb-2">{currentT.inquiryTypeLabel}</label>
+                <select
+                  value={contactPayload.inquiry_type}
+                  onChange={(e) => setContactPayload((p) => ({ ...p, inquiry_type: e.target.value }))}
+                  className="w-full bg-[#101010] border border-white/10 rounded-sm px-3 py-2.5 text-sm text-white focus:outline-none focus:border-amber-300"
+                >
+                  {(currentT.inquiryTypes || []).map((opt) => (
+                    <option key={opt.value} value={opt.value}>{opt.label}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-[11px] text-stone-400 uppercase mb-2">{currentT.msgLabel}</label>
+                <textarea
+                  rows={5}
+                  value={contactPayload.message}
+                  onChange={(e) => setContactPayload((p) => ({ ...p, message: e.target.value }))}
+                  placeholder={currentT.msgHint}
+                  className="w-full bg-transparent border-b border-white/20 pb-2 text-sm text-white placeholder:text-stone-600 focus:outline-none focus:border-amber-300 resize-none"
+                />
+              </div>
+
+              <div className="space-y-3 pt-2">
+                <button
+                  type="submit"
+                  disabled={!isContactValid || sendingMessage}
+                  className={`w-full py-4 font-medium tracking-[0.3em] transition-all text-xs rounded-sm ${
+                    !isContactValid || sendingMessage
+                      ? 'bg-white/10 text-white/40 cursor-not-allowed'
+                      : 'bg-white text-black hover:bg-amber-300'
+                  }`}
+                >
+                  {sendingMessage ? currentT.sendingBtn : currentT.sendBtn}
+                </button>
+                {messageBanner && (
+                  <div className={`flex items-start gap-3 rounded-sm border px-3.5 py-2.5 text-[13px] leading-relaxed tracking-wide ${
+                    messageBanner.level === 'ok' ? 'border-emerald-400/30 bg-emerald-500/5 text-emerald-100' :
+                    messageBanner.level === 'warn' ? 'border-amber-300/40 bg-amber-500/5 text-amber-100' :
+                    'border-rose-400/30 bg-rose-500/5 text-rose-100'
+                  }`}>
+                    {messageBanner.level === 'ok' ? <CheckCircle size={16} className="mt-0.5 shrink-0" /> :
+                     messageBanner.level === 'warn' ? <AlertTriangle size={16} className="mt-0.5 shrink-0" /> :
+                     <AlertTriangle size={16} className="mt-0.5 shrink-0" />}
+                    <span>{messageBanner.text}</span>
+                  </div>
+                )}
+              </div>
             </form>
           </div>
         </div>
@@ -1046,8 +1330,20 @@ export default function App() {
                 </div>
 
                 <div className="flex border-b border-white/10 bg-[#141414]">
-                  {[{ key: 'about', label: 'Biography (经历)' }, { key: 'works', label: 'Works (作品)' }, { key: 'socials', label: 'Socials (社媒)' }].map(tab => (
-                    <button key={tab.key} onClick={() => setAdminSection(tab.key)} className={`flex-1 py-4 text-xs tracking-widest ${adminSection === tab.key ? 'text-amber-300 border-b-2 border-amber-300 bg-white/5 font-medium' : 'text-stone-400'}`}>{tab.label}</button>
+                  {[
+                    { key: 'about', label: 'Biography (经历)' },
+                    { key: 'works', label: 'Works (作品)' },
+                    { key: 'socials', label: 'Socials (社媒)' },
+                    { key: 'messages', label: currentT.adminMessagesTab + ' (留言管理)' }
+                  ].map(tab => (
+                    <button
+                      key={tab.key}
+                      onClick={() => {
+                        setAdminSection(tab.key);
+                        if (tab.key === 'messages') loadMessages();
+                      }}
+                      className={`flex-1 py-4 text-xs tracking-widest ${adminSection === tab.key ? 'text-amber-300 border-b-2 border-amber-300 bg-white/5 font-medium' : 'text-stone-400'}`}
+                    >{tab.label}</button>
                   ))}
                 </div>
 
@@ -1179,6 +1475,120 @@ export default function App() {
                       <div><label className="text-[10px] text-stone-400 uppercase">Facebook</label><input type="text" value={socials.facebook || ''} onChange={e => setSocials({...socials, facebook: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
                       <div><label className="text-[10px] text-stone-400 uppercase">WhatsApp</label><input type="text" value={socials.whatsapp || ''} onChange={e => setSocials({...socials, whatsapp: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
                       <div><label className="text-[10px] text-stone-400 uppercase">TikTok</label><input type="text" value={socials.tiktok || ''} onChange={e => setSocials({...socials, tiktok: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
+                    </div>
+                  )}
+
+                  {/* 留言管理 */}
+                  {adminSection === 'messages' && (
+                    <div className="space-y-5">
+                      <div className="flex items-center justify-between gap-3 flex-wrap">
+                        <div className="text-xs text-stone-400 space-y-1">
+                          <div>{currentT.msgNoData ? currentT.adminMessagesTab : 'Messages'} · {lang === 'en' ? 'Newest first' : '按时间倒序'}</div>
+                          <div className="text-[11px] text-stone-500 tracking-widest">
+                            {lang === 'en' ? 'Notifications are sent to ' : '新留言将实时通知到：'}
+                            <span className="text-amber-300/90">{DEFAULT_NOTIFY_EMAIL}</span>
+                          </div>
+                        </div>
+                        <button
+                          onClick={loadMessages}
+                          className="px-3 py-1.5 bg-white/5 border border-white/10 text-stone-200 text-[11px] tracking-widest rounded-sm hover:bg-white/10 flex items-center gap-1"
+                        >
+                          <MessageSquare size={14} /> {lang === 'en' ? 'Refresh' : '刷新列表'}
+                        </button>
+                      </div>
+
+                      {messages.length === 0 ? (
+                        <div className="p-8 border border-white/5 rounded-sm bg-[#141414] text-center space-y-3">
+                          <Inbox size={26} className="mx-auto text-stone-500" />
+                          <div className="text-xs text-stone-400 tracking-widest">{currentT.msgNoData}</div>
+                        </div>
+                      ) : (
+                        <div className="space-y-4">
+                          {messages.map((m) => {
+                            const inquiryLabel =
+                              (currentT.inquiryTypes || []).find(i => i.value === m.inquiry_type)?.label ||
+                              m.inquiry_type ||
+                              '';
+                            const statusLabel =
+                              m.status === 'replied' ? currentT.msgStatusReplied :
+                              m.status === 'read' ? currentT.msgStatusRead :
+                              currentT.msgStatusNew;
+                            const statusTone =
+                              m.status === 'replied' ? 'border-emerald-300/40 text-emerald-100 bg-emerald-500/5' :
+                              m.status === 'read' ? 'border-sky-300/40 text-sky-100 bg-sky-500/5' :
+                              'border-amber-300/40 text-amber-100 bg-amber-500/5';
+
+                            return (
+                              <article key={m.id} className={`p-4 md:p-5 bg-[#171717] border rounded-sm space-y-4 ${m.status === 'new' ? 'border-amber-300/20' : 'border-white/10'}`}>
+                                <header className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
+                                  <div className="md:col-span-3 space-y-1">
+                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500">{currentT.msgInquiryTitle}</div>
+                                    <div className="text-sm text-stone-100">{inquiryLabel || '—'}</div>
+                                  </div>
+                                  <div className="md:col-span-4 space-y-1">
+                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500">From · 来源</div>
+                                    <div className="text-sm text-stone-100">
+                                      <span className="font-medium">{m.name || '—'}</span>
+                                      <span className="mx-2 text-stone-500/70">·</span>
+                                      <a
+                                        href={/@/.test(String(m.contact || '')) ? `mailto:${m.contact}` : `tel:${m.contact}`}
+                                        className="text-amber-200 hover:text-amber-300 underline-offset-2 hover:underline"
+                                      >{m.contact || '—'}</a>
+                                    </div>
+                                  </div>
+                                  <div className="md:col-span-3 space-y-1">
+                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500">{currentT.msgTimeTitle}</div>
+                                    <div className="text-sm text-stone-200 tabular-nums">
+                                      {m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
+                                    </div>
+                                  </div>
+                                  <div className="md:col-span-2 space-y-1 md:text-right">
+                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500 md:text-right">{currentT.msgStatusTitle}</div>
+                                    <div className={`inline-flex md:ml-auto px-2.5 py-1 rounded-full border text-[11px] tracking-widest ${statusTone}`}>
+                                      {statusLabel}
+                                    </div>
+                                  </div>
+                                </header>
+
+                                <div className="rounded-sm border border-white/10 bg-[#0e0e0e] p-4">
+                                  <p className="text-[14px] md:text-sm leading-loose tracking-wide text-stone-200 whitespace-pre-wrap">
+                                    {m.message || ''}
+                                  </p>
+                                </div>
+
+                                <footer className="flex flex-wrap items-center gap-2 justify-between pt-1">
+                                  <div className="flex flex-wrap items-center gap-2">
+                                    <button
+                                      onClick={() => openMailtoReply(m)}
+                                      className="px-3 py-1.5 bg-amber-300 text-black text-[11px] tracking-widest rounded-sm hover:bg-white transition-colors flex items-center gap-1"
+                                    >
+                                      <Mail size={14} /> {currentT.msgReplyBtn}
+                                    </button>
+                                    {m.status !== 'read' && (
+                                      <button onClick={() => updateMessageStatus(m.id, 'read')} className="px-3 py-1.5 bg-white/5 border border-white/10 text-stone-200 text-[11px] tracking-widest rounded-sm hover:bg-white/10 flex items-center gap-1">
+                                        <CheckCircle size={14} /> {currentT.msgMarkReadBtn}
+                                      </button>
+                                    )}
+                                    {m.status !== 'new' && (
+                                      <button onClick={() => updateMessageStatus(m.id, 'new')} className="px-3 py-1.5 bg-white/5 border border-white/10 text-stone-200 text-[11px] tracking-widest rounded-sm hover:bg-white/10 flex items-center gap-1">
+                                        <MessageSquare size={14} /> {currentT.msgMarkNewBtn}
+                                      </button>
+                                    )}
+                                    {m.status !== 'replied' && (
+                                      <button onClick={() => updateMessageStatus(m.id, 'replied')} className="px-3 py-1.5 bg-white/5 border border-white/10 text-stone-200 text-[11px] tracking-widest rounded-sm hover:bg-white/10 flex items-center gap-1">
+                                        <CheckCircle size={14} /> {currentT.msgMarkRepliedBtn}
+                                      </button>
+                                    )}
+                                  </div>
+                                  <button onClick={() => deleteMessage(m.id)} className="px-3 py-1.5 bg-rose-500/5 border border-rose-500/20 text-rose-200 text-[11px] tracking-widest rounded-sm hover:bg-rose-500/10 flex items-center gap-1">
+                                    <Trash2 size={14} /> {currentT.msgDeleteBtn}
+                                  </button>
+                                </footer>
+                              </article>
+                            );
+                          })}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
