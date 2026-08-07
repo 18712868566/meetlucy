@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect } from 'react';
-import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, ZoomIn, Link as LinkIcon } from 'lucide-react';
+import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, ZoomIn, Link as LinkIcon, Leaf, Feather, BookOpen, Compass, Sparkles, Palette, MessageCircleHeart } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -92,27 +92,57 @@ function ImageMagnifier({ src, alt }) {
   );
 }
 
-// 多语言翻译与兜底数据词典
+function toLines(text) {
+  if (!text) return [];
+  return String(text)
+    .split(/\r?\n/)
+    .map(s => s.replace(/^[-•·\d.\s、()（）]+/g, '').trim())
+    .filter(Boolean);
+}
+
+function detectAboutKind(about) {
+  if (!about) return 'text';
+  const zh = String(about.title_zh || '');
+  if (/履历|经历|简历|Resume|Career|Journey/i.test(zh + (about.title_en || ''))) return 'resume';
+  if (/自述|心语|自白|Artist Statement|Statement|创作自述/i.test(zh + (about.title_en || ''))) return 'statement';
+  const descLines = toLines(about.desc_zh || about.desc_en || '');
+  if (descLines.length >= 3) return 'resume';
+  return 'text';
+}
+
 const t = {
   en: {
     nav: ["Home", "Biography", "Works", "Vision", "Contact"],
-    heroSubtitle: "— Cloud Powered Art Portfolio —",
+    heroSubtitle: "— A Contemporary Ink Portfolio by Lucy —",
     heroTitle1: "Nature as Teacher",
     heroTitle2: "Heart as Source",
-    heroDesc: "Rooted in millennia of artistic essence, empowered by the cloud. Update your Eastern aesthetic world anytime, anywhere.",
+    heroDesc: "Lucy is a contemporary Chinese ink landscape artist whose work carries forward the bone structure of Song and Yuan shanshui, the literati spirit of Ming and Qing, and a modern expressive sensibility—rooted in tradition yet reaching across cultures.",
     exploreWorks: "Explore Works",
     bookExhibition: "Exhibition / Inquiry",
     aboutTag: "Biography & Vision",
     worksTag: "Selected Portfolio",
     worksTitle: "Selected Works",
     visionTag: "Aesthetic Vision",
-    visionTitle: "Bridging Tradition and Modernity",
-    visionDesc1: "We believe that traditional Chinese art is not a relic of the past, but a living, breathing philosophy of nature and space. By exhibiting to American and global collectors, we aim to translate the quiet majesty of ink into a universal modern dialogue.",
-    visionDesc2: "Every brushstroke carries thousands of years of contemplation on mountains, rivers, and the human spirit—tailored for contemporary architecture and luxury living spaces.",
+    visionTitle: "Ink as Bridge · Connecting East and World",
+    visionMission: "With a lineage stretching two thousand years, Chinese ink landscape is far more than a depiction of scenery. It is the visual language of Tian Ren He Yi—the unity of humanity and nature—and a sanctuary where Eastern minds settle and return. In a global age, Lucy uses brush and ink as a vessel, inviting audiences beyond China to feel the quiet philosophy, the living craft, and the tranquil beauty of an ancient aesthetic made contemporary.",
+    visionPhilosophyTitle: "Aesthetic Philosophy",
+    visionPhilosophy: [
+      "Honour tradition without dogma — keep the rigour of brush, line, and ink logic while opening the work to a cross-cultural, modern gaze.",
+      "Innovate without uprooting — every experimental gesture grows from a deep reading of the classical lineage, never losing the Eastern pulse of the work.",
+      "Share without dumbing down — make ink legible to broader audiences in plain language, never compromising the standard or the cultural weight behind the brushstroke."
+    ],
+    visionActionsTitle: "In Practice",
+    visionActions: [
+      "Deepen the studio practice: new landscape series that record journeys, reflections on nature, and the continuing dialogue with the classical canon—shared regularly with collectors and audiences.",
+      "Build bilingual educational content: essays and studio stories that unpack the lineage, techniques, and inner philosophy of Chinese ink for global readers.",
+      "Open the studio process: candid journals of brush, paper, mineral pigment, and silk so that art lovers anywhere can feel the quiet materiality of Eastern painting up close.",
+      "Collaborate internationally: exhibitions, artist talks, and cross-institutional partnerships that champion Chinese ink as a living, globally resonant art form."
+    ],
+    visionQuote: ["Ink knows no borders; mountains and rivers speak to every heart.", "May every visitor find in these waters and stones a quiet place to pause, and a resonance that travels across oceans and languages."],
     allWorks: "All",
-    shanshui: "Shanshui",
-    xiyi: "Ink Wash",
-    modern: "Modern",
+    shanshui: "Verdant Shanshui",
+    xiyi: "Ink Wash · Xieyi",
+    modern: "Contemporary Ink",
     detailBtn: "High-Res Details",
     contactTag: "Get In Touch",
     contactTitle1: "Looking Forward to",
@@ -129,23 +159,36 @@ const t = {
     passPlaceholder: "Password",
     loginBtn: "Authenticate",
     logoutBtn: "Lock Admin",
-    footerText: "© 2026 Ink & Spirit Gallery. All Rights Reserved."
+    footerText: "© 2026 Lucy 坊 · Meet Lucy Studio. All rights reserved."
   },
   zh: {
     nav: ["首页", "个人经历", "精选作品", "美育愿景", "联系画廊"],
-    heroSubtitle: "— 云端驱动的艺术作品集 —",
+    heroSubtitle: "— Lucy 坊 · 当代水墨艺术家作品集 —",
     heroTitle1: "外师造化",
     heroTitle2: "中得心源",
-    heroDesc: "以千载意境为骨，以云端数据为翼。随时随地，实时更新您的东方美学世界。",
+    heroDesc: "Lucy，当代水墨山水艺术家。恪守宋元山水骨法、明清文人意趣与近现代笔墨体系，在法度根基之上，持续探索东方山水精神的当代表达。",
     exploreWorks: "浏览作品集",
     bookExhibition: "预约展陈 / 收藏",
     aboutTag: "Biography & Vision",
     worksTag: "Selected Portfolio",
     worksTitle: "精选画作",
     visionTag: "Aesthetic Vision",
-    visionTitle: "融汇传统与现代美学",
-    visionDesc1: "我们坚信，传统中国水墨并非陈旧的历史遗迹，而是一种充满生命力的自然与空间哲学。通过向美国及全球藏家展陈，我们致力于将水墨的沉静气韵转化为现代国际化的美学共鸣。",
-    visionDesc2: "每一笔墨都承载着千载对山川与心灵的体悟，专为当代高端建筑、美学空间及国际收藏体系量身定制。",
+    visionTitle: "以水墨为桥，连接东方与世界",
+    visionMission: "绵延两千年的中国水墨山水，从来不是对自然风光的简单复刻。它是「天人合一」东方哲思的视觉化表达，是东方人安顿身心、寄放精神的心灵栖居地。在文化交融的全球化时代，Lucy 愿以画笔为舟、以水墨为桥，让更多海外观众读懂水墨的意趣、爱上东方的美学，透过山水这一共通的视觉语言，感知中国文化的深邃底蕴与东方雅致的生活哲思。",
+    visionPhilosophyTitle: "美育理念",
+    visionPhilosophy: [
+      "传承不守旧 · 恪守传统笔墨法度与精神内核，融入当代审美视野与跨文化表达视角，让千年水墨艺术在当下焕发鲜活生命力。",
+      "创新不离根 · 所有艺术探索皆扎根于对传统文脉的深刻理解，于变化中守本心，始终保有东方艺术的底色与风骨。",
+      "普及不简化 · 以平实易懂的方式拆解水墨知识，却从不折损艺术的高度与标准，让大众真正读懂水墨背后的美学价值与文化重量。"
+    ],
+    visionActionsTitle: "正在践行的事",
+    visionActions: [
+      "持续深耕水墨山水创作，以新作记录对自然与文脉的思考，定期向藏家和观众分享创作成果。",
+      "打造中英文双语水墨艺术科普内容，系统向海外受众讲解国画技法源流与东方美学内核。",
+      "公开创作日常与技法细节，让全球艺术爱好者都能近距离感受毛笔与宣纸碰撞的东方魅力。",
+      "联动海外文化机构、艺术空间开展展览与交流，推动中国水墨艺术的跨文化传播与认同。"
+    ],
+    visionQuote: ["墨色无界，山水有情。", "愿每一位驻足的观者，都能在这一方水墨天地里，寻得内心的宁静，收获跨越山海的共鸣。"],
     allWorks: "全部作品",
     shanshui: "青绿山水",
     xiyi: "水墨写意",
@@ -166,24 +209,31 @@ const t = {
     passPlaceholder: "密码",
     loginBtn: "安全登录",
     logoutBtn: "退出登录并加锁",
-    footerText: "© 2026 墨韵丹青艺术空间. 版权所有."
+    footerText: "© 2026 Lucy 坊 · 墨韵丹青艺术空间. 版权所有."
   }
 };
 
 const defaultAbout = [
   {
-    title_zh: "墨分五色 · 独居一心",
-    title_en: "Ink in Five Tones · Pure Intent",
-    desc_zh: "研习国画数十载，深入临摹宋元名家笔意，兼修现代造型艺术。主张“画无定法，贵在出尘”，将东方美学哲学融入当代生活空间。",
-    desc_en: "Decades of studying traditional Chinese painting, deeply emulating Song and Yuan dynasty masters while embracing modern forms. Believing that 'art has no rigid rules, only transcendence,' integrating Eastern aesthetic philosophy into contemporary living spaces.",
-    image: "http://www.chinashj.com/uploads/allimg/160114/1-160114103I5222.png"
+    title_zh: "Lucy · 当代水墨山水艺术家",
+    title_en: "Lucy · Contemporary Ink Landscape Artist",
+    desc_zh: "1999 年生，自幼浸染中国传统书画文脉，深耕水墨山水创作十余年。毕业于专业美术院校山水画专业，师承多位当代国画名家，系统研摹宋元山水骨法、明清文人意趣与近现代笔墨体系；在恪守传统皴法、章法与墨法法度的根基上，持续探索东方山水精神的当代表达路径。\n\n创作恪守「师法自然，中得心源」的古训，行迹遍历中国南北名山大川——太行的苍浑雄浑、江南的烟雨灵秀、黄山的云海松风、漓江的清寂水韵，皆收于眼底、凝于笔端，化作纸上丘壑。作品以气韵生动为核心，以墨色干湿浓淡的层层晕染构建空间纵深，以线条刚柔缓疾的节奏变化传递山川风骨，在尺幅之间营造出可游可居的东方诗意天地。\n\n近年专注于中国水墨艺术的国际传播与当代表达，愿以山水为文化媒介，向世界呈现中国美学中「天人合一」的哲学智慧，以及东方艺术独有的宁静致远的精神境界。",
+    desc_en: "Born in 1999, Lucy grew up immersed in the living lineage of Chinese calligraphy and painting. After more than a decade of dedicated practice, she graduated from a professional fine art academy with a specialization in landscape painting, studying under several leading contemporary masters of ink. Her training systematically covers the structural rigour of Song and Yuan shanshui, the scholar-painter sensibility of Ming and Qing, and the expanded ink language of the modern era—all while she forges her own contemporary path for the Eastern landscape spirit.\n\nHer practice is guided by the classical adage: study from nature, and discover the source in your own heart. Her journeys have taken her across the great mountains and rivers of China: the rugged grandeur of the Taihang range, the misty lyricism of Jiangnan, the cloud-sea pines of Huangshan, the quiet waters of the Li River. Each journey returns as memory, breath, and brushwork. At the heart of every work is qiyun—the rhythmic life-force of the image—built through layered wet and dry ink that creates spatial depth, and through the measured cadence of line that carries the bone of the mountain.\n\nIn recent years, Lucy has devoted herself to the international transmission of Chinese ink art. Landscape, for her, is a cultural medium: a way to share the quiet philosophy of Tian Ren He Yi—unity between humanity and nature—and the enduring, contemplative spirit that only Eastern ink can hold.",
+    image: "https://img.meetlucy.shop/pic1.png"
   },
   {
-    title_zh: "外师造化 · 融汇中西",
-    title_en: "Nature as Teacher · East Meets West",
-    desc_zh: "行万里路，写万卷景。常年游历名山大川，将自然生机转化为笔底波澜。",
-    desc_en: "Traveling thousands of miles to capture boundless landscapes. Years of journeying through majestic mountains and rivers, transforming natural vitality into sweeping brushwork.",
-    image: "https://pic.616pic.com/bg_w1180/00/10/14/Gx3x5gASSx.jpg"
+    title_zh: "艺术履历",
+    title_en: "Artistic Journey",
+    desc_zh: "专业美术院校山水画专业科班出身，传统功底扎实\n多次受邀参与国内外书画展览与跨文化艺术交流项目\n作品被海内外藏家与艺术爱好者广泛收藏\n长期深耕水墨艺术创作与东方美学美育传播",
+    desc_en: "Professional academic training in Chinese landscape painting with a rigorous classical foundation\nInvited to numerous national and international ink exhibitions and cross-cultural artistic exchange projects\nWorks widely collected by private collectors and art lovers both in China and overseas\nOngoing dedication to ink practice alongside Eastern aesthetic education and public outreach",
+    image: "https://img.meetlucy.shop/hushi.jpg"
+  },
+  {
+    title_zh: "创作自述",
+    title_en: "Artist Statement",
+    desc_zh: "山水于我，从来不止是纸上风景，更是中国人安放心灵的精神原乡。\n一笔一墨的起落之间，既是与千年文脉的隔空对话，也是对天地自然的本心观照。愿我的画作能跨越语言与文化的边界，让每一位观者都能触摸到东方水墨的静谧力量。",
+    desc_en: "For me, mountains and rivers have never been merely landscapes on paper. They are the spiritual homeland where the Chinese mind returns, and where the heart finds its stillness.\nIn every rise and fall of the brush—every wash, every stroke, every breath of ink—I hold a quiet conversation with a millennial lineage, and an honest looking into the natural world. May these paintings cross the borders of language and culture, so that every viewer may feel the tranquil, unshakable force of Eastern ink.",
+    image: "https://img.meetlucy.shop/pic1.png"
   }
 ];
 
@@ -193,20 +243,20 @@ const defaultWorks = [
     title_en: "Returning Boats in Verdant Peaks",
     category: "shanshui",
     category_label_zh: "青绿山水",
-    category_label_en: "Shanshui",
+    category_label_en: "Verdant Shanshui",
     year: "2025",
     size: "180 × 96 cm",
     material_zh: "绢本设色 / 矿物颜料",
     material_en: "Ink on Silk / Mineral Pigments",
     description_zh: "借宋人笔意，以矿物青绿重彩表现蜀山晨雾与层峦叠嶂。",
-    description_en: "Drawing inspiration from Song dynasty brushwork, using mineral green and heavy color pigments to depict the morning mist and rolling peaks.",
-    cover_image: "https://pic.616pic.com/bg_w1180/00/10/14/Gx3x5gASSx.jpg",
-    image: "https://pic.616pic.com/bg_w1180/00/10/14/Gx3x5gASSx.jpg"
+    description_en: "A dialogue with the brush logic of Song masters: mineral greens and blues conjure the morning mists and layered ridges of the Sichuan mountains.",
+    cover_image: "https://img.meetlucy.shop/pic1.png",
+    image: "https://img.meetlucy.shop/pic1.png"
   }
 ];
 
 const defaultSocials = {
-  email: 'art@chinesepainting-portfolio.com',
+  email: 'art@meetlucy.shop',
   phone: '+1 (555) 019-2834',
   instagram: 'https://instagram.com',
   facebook: 'https://facebook.com',
@@ -238,6 +288,33 @@ function normalizeImageUrl(input) {
   return url.toString();
 }
 
+const SITE_TITLE_DEFAULT =
+  'Lucy 坊 · 当代水墨艺术家作品集 | Meet Lucy · Contemporary Ink Landscape Artist';
+const SITE_DESC_DEFAULT =
+  'Lucy 坊（Meet Lucy）当代水墨山水艺术家个人作品集。绢本设色、矿物颜料，师承宋元骨法与明清意趣，外师造化中得心源，作品系列、艺术履历、创作自述、美育愿景与收藏联络一站呈现。';
+
+function ensureMeta(name, attr = 'name') {
+  let el = document.head.querySelector(`meta[${attr}="${name}"]`);
+  if (!el) {
+    el = document.createElement('meta');
+    el.setAttribute(attr, name);
+    document.head.appendChild(el);
+  }
+  return el;
+}
+
+function setMetaDescription(content) {
+  ensureMeta('description').setAttribute('content', content);
+  ensureMeta('og:description', 'property').setAttribute('content', content);
+  ensureMeta('twitter:description').setAttribute('content', content);
+}
+
+function setOgTitleAndUrl(title, url = window.location.href) {
+  ensureMeta('og:title', 'property').setAttribute('content', title);
+  ensureMeta('twitter:title').setAttribute('content', title);
+  ensureMeta('og:url', 'property').setAttribute('content', url);
+}
+
 export default function App() {
   const containerRef = useRef(null);
   const heroVideoRef = useRef(null);
@@ -245,6 +322,8 @@ export default function App() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('all');
   const [aboutIdx, setAboutIdx] = useState(0);
+  const [aboutHover, setAboutHover] = useState(false);
+  const [aboutAutoPausedByUser, setAboutAutoPausedByUser] = useState(false);
   const [aboutImageStatus, setAboutImageStatus] = useState({});
   const [selectedWork, setSelectedWork] = useState(null);
 
@@ -387,12 +466,52 @@ export default function App() {
   };
 
   useEffect(() => {
+    const currentT = t[lang] || t.en;
+    const aboutItem = aboutData[aboutIdx];
+    const aboutTitle = aboutItem?.[lang === 'en' ? 'title_en' : 'title_zh'];
+    const aboutKind = detectAboutKind(aboutItem);
+    const aboutLines = toLines(aboutItem?.[lang === 'en' ? 'desc_en' : 'desc_zh'] || '');
+    const aboutDescription =
+      aboutKind === 'text'
+        ? (aboutItem?.[lang === 'en' ? 'desc_en' : 'desc_zh'] || '').split(/\n+/).map(s => s.trim()).filter(Boolean).join('  ')
+        : aboutLines.slice(0, 2).join(' · ');
+
+    if (selectedWork) {
+      const workTitle = selectedWork[lang === 'en' ? 'title_en' : 'title_zh'];
+      const workYear = selectedWork.year;
+      const workMaterial = selectedWork[lang === 'en' ? 'material_en' : 'material_zh'];
+      const workDesc = selectedWork[lang === 'en' ? 'description_en' : 'description_zh'];
+      const brand = lang === 'en' ? 'Meet Lucy · Contemporary Ink Artist' : 'Lucy 坊 · 当代水墨艺术家';
+      const title = `${workTitle}${workYear ? ` · ${workYear}` : ''} | ${brand}`;
+      const description =
+        [workMaterial, workDesc].filter(Boolean).join(' — ') ||
+        (lang === 'en'
+          ? `Artwork details from Meet Lucy portfolio: ${workTitle || ''}`.trim()
+          : `Lucy 坊作品详情：${workTitle || ''}`.trim());
+      document.title = title;
+      setMetaDescription(description);
+      setOgTitleAndUrl(title);
+      return;
+    }
+
+    const brandPart = SITE_TITLE_DEFAULT.split('|')[1]?.trim() || SITE_TITLE_DEFAULT;
+    const title = `${aboutTitle || currentT.heroTitle1 + ' · ' + currentT.heroTitle2} | ${brandPart}`;
+    const description =
+      aboutDescription ||
+      SITE_DESC_DEFAULT;
+    document.title = title;
+    setMetaDescription(description);
+    setOgTitleAndUrl(title);
+  }, [lang, aboutIdx, aboutData, selectedWork]);
+
+  useEffect(() => {
     if (aboutData.length === 0) return;
     const timer = setInterval(() => {
+      if (aboutHover || aboutAutoPausedByUser) return;
       setAboutIdx((prev) => (prev + 1) % aboutData.length);
-    }, 6000);
+    }, 9000);
     return () => clearInterval(timer);
-  }, [aboutData.length]);
+  }, [aboutData.length, aboutHover, aboutAutoPausedByUser]);
 
   const filteredWorks = activeTab === 'all' 
     ? works 
@@ -536,7 +655,10 @@ export default function App() {
       {/* 个人经历 (ABOUT) */}
       <section id="about" className="reveal-section relative py-24 md:py-48 px-6 md:px-20 bg-[#0d0d0d] overflow-hidden">
         <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-16 items-center">
-          <div className="lg:col-span-5 relative group">
+          <div className="lg:col-span-5 relative group"
+                    onMouseEnter={() => setAboutHover(true)}
+                    onMouseLeave={() => setAboutHover(false)}
+                  >
             <div className="relative aspect-[4/3] md:aspect-[3/4] overflow-visible">
               <div className="absolute inset-0 overflow-hidden rounded-sm shadow-2xl bg-black">
                 {aboutData.map((data, idx) => (
@@ -576,24 +698,101 @@ export default function App() {
               <div className="pointer-events-none absolute -right-1 -bottom-1 h-6 w-6 border-r border-b border-amber-300/35"></div>
             </div>
           </div>
-          <div className="lg:col-span-7 flex flex-col justify-center">
+          <div className="lg:col-span-7 flex flex-col justify-center"
+            onMouseEnter={() => setAboutHover(true)}
+            onMouseLeave={() => setAboutHover(false)}
+          >
             <span className="text-amber-300 tracking-[0.3em] text-xs uppercase mb-3 block font-medium">{currentT.aboutTag}</span>
-            <div className="relative min-h-[160px] mb-8">
-              {aboutData.map((data, idx) => (
-                <div key={idx} className={`transition-all duration-700 absolute inset-0 ${aboutIdx === idx ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-4 pointer-events-none'}`}>
-                  <h2 className="text-2xl md:text-5xl font-light text-white mb-4 leading-snug">
-                    {lang === 'en' ? data.title_en : data.title_zh}
-                  </h2>
-                  <p className="text-stone-300 leading-relaxed tracking-wider text-sm md:text-lg font-light">
-                    {lang === 'en' ? data.desc_en : data.desc_zh}
-                  </p>
-                </div>
-              ))}
+            <div className="relative min-h-[320px] md:min-h-[420px] mb-8 overflow-hidden">
+              {aboutData.map((data, idx) => {
+                const kind = detectAboutKind(data);
+                const descRaw = lang === 'en' ? data.desc_en : data.desc_zh;
+                const paragraphs = String(descRaw || '').split(/\n{2,}/).map(s => s.trim()).filter(Boolean);
+                const lines = toLines(descRaw);
+                const isResume = kind === 'resume';
+                const isStatement = kind === 'statement';
+
+                return (
+                  <div key={idx} className={`transition-all duration-700 absolute inset-0 overflow-y-auto pr-3 md:pr-6 ${aboutIdx === idx ? 'opacity-100 z-10 translate-y-0' : 'opacity-0 z-0 translate-y-4 pointer-events-none'}`}>
+                    <h2 className="text-2xl md:text-4xl font-light text-white mb-5 leading-snug">
+                      {lang === 'en' ? data.title_en : data.title_zh}
+                    </h2>
+
+                    {isResume && (
+                      <ul className="space-y-3 text-stone-300 leading-relaxed tracking-wide text-sm md:text-base font-light">
+                        {lines.map((line, i) => (
+                          <li key={i} className="flex gap-3 items-start">
+                            <span className="mt-2 h-[1px] w-5 shrink-0 bg-amber-300/60" />
+                            <span className="text-stone-200/90">{line}</span>
+                          </li>
+                        ))}
+                        {lines.length === 0 && (
+                          <p className="text-stone-300 leading-relaxed tracking-wider text-sm md:text-lg font-light">{descRaw}</p>
+                        )}
+                      </ul>
+                    )}
+
+                    {isStatement && (
+                      <figure className="border-l-[2px] border-amber-300/60 pl-5 md:pl-6 space-y-4">
+                        {paragraphs.length > 0 ? (
+                          paragraphs.map((p, i) => (
+                            <blockquote key={i} className="text-stone-200/95 italic leading-loose tracking-wider text-[15px] md:text-xl font-light">
+                              {p}
+                            </blockquote>
+                          ))
+                        ) : (
+                          <blockquote className="text-stone-200/95 italic leading-loose tracking-wider text-[15px] md:text-xl font-light">
+                            {descRaw}
+                          </blockquote>
+                        )}
+                        <figcaption className="pt-2 text-[11px] md:text-xs tracking-[0.3em] uppercase text-amber-300/80">
+                          — Lucy · Artist Statement
+                        </figcaption>
+                      </figure>
+                    )}
+
+                    {!isResume && !isStatement && (
+                      <div className="space-y-4 text-stone-300 leading-loose tracking-wide text-sm md:text-[15px] font-light">
+                        {paragraphs.length > 0 ? (
+                          paragraphs.map((p, i) => <p key={i}>{p}</p>)
+                        ) : (
+                          <p>{descRaw}</p>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
             </div>
-            <div className="flex gap-3 mt-16 md:mt-24">
-              {aboutData.map((_, idx) => (
-                <button key={idx} onClick={() => setAboutIdx(idx)} className={`h-[2px] rounded-full transition-all ${aboutIdx === idx ? 'w-12 bg-amber-300' : 'w-6 bg-white/20'}`} />
-              ))}
+            <div className="flex items-center justify-between gap-6 mt-12 md:mt-16">
+              <div className="flex gap-3">
+                {aboutData.map((_, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => { setAboutIdx(idx); setAboutAutoPausedByUser(true); }}
+                    className={`h-[2px] rounded-full transition-all ${aboutIdx === idx ? 'w-12 bg-amber-300' : 'w-6 bg-white/20'}`}
+                    aria-label={`About slide ${idx + 1}`}
+                  />
+                ))}
+              </div>
+              <div className="flex items-center gap-2 text-[10px] md:text-[11px] tracking-[0.25em] uppercase text-stone-500">
+                <button
+                  onClick={() => setAboutIdx((p) => (p - 1 + aboutData.length) % aboutData.length)}
+                  onMouseDown={() => setAboutAutoPausedByUser(true)}
+                  className="p-2 rounded-full border border-white/10 hover:text-amber-300 hover:border-amber-300/40 text-stone-400 transition-colors"
+                  aria-label="Previous about"
+                >←</button>
+                <span className="tabular-nums">{String(aboutIdx + 1).padStart(2, '0')} / {String(aboutData.length).padStart(2, '0')}</span>
+                <button
+                  onClick={() => setAboutIdx((p) => (p + 1) % aboutData.length)}
+                  onMouseDown={() => setAboutAutoPausedByUser(true)}
+                  className="p-2 rounded-full border border-white/10 hover:text-amber-300 hover:border-amber-300/40 text-stone-400 transition-colors"
+                  aria-label="Next about"
+                >→</button>
+              </div>
+            </div>
+            <div className="mt-5 text-[10px] tracking-[0.3em] uppercase text-stone-500/80">
+              {aboutHover || aboutAutoPausedByUser ? '⏸ Auto-scroll paused' : '▶ Auto-playing · 9s'}
             </div>
           </div>
         </div>
@@ -646,16 +845,71 @@ export default function App() {
 
       {/* 美育愿景 (VISION) */}
       <section id="vision" className="reveal-section relative py-24 md:py-36 px-6 md:px-20 bg-[#0d0d0d] border-t border-white/10">
-        <div className="max-w-5xl mx-auto text-center space-y-8 relative z-10">
-          <span className="text-amber-300 tracking-[0.4em] text-xs uppercase block font-medium">{currentT.visionTag}</span>
-          <h2 className="text-3xl md:text-5xl font-light text-white leading-snug">{currentT.visionTitle}</h2>
-          <div className="w-16 h-[1px] bg-amber-300/50 mx-auto"></div>
-          <p className="text-stone-300 text-sm md:text-lg font-light leading-relaxed tracking-wider max-w-3xl mx-auto">
-            {currentT.visionDesc1}
-          </p>
-          <p className="text-stone-400 text-xs md:text-sm font-light leading-relaxed tracking-wider max-w-2xl mx-auto">
-            {currentT.visionDesc2}
-          </p>
+        <div className="max-w-6xl mx-auto space-y-16 relative z-10">
+          <div className="text-center space-y-6">
+            <span className="text-amber-300 tracking-[0.4em] text-xs uppercase block font-medium">{currentT.visionTag}</span>
+            <h2 className="text-3xl md:text-5xl font-light text-white leading-snug">{currentT.visionTitle}</h2>
+            <div className="w-16 h-[1px] bg-amber-300/50 mx-auto"></div>
+            <p className="text-stone-300 text-sm md:text-lg font-light leading-loose tracking-wide max-w-4xl mx-auto">
+              {currentT.visionMission}
+            </p>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Sparkles size={18} className="text-amber-300" />
+              <h3 className="text-xl md:text-2xl font-light text-white">{currentT.visionPhilosophyTitle}</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {(currentT.visionPhilosophy || []).map((item, idx) => {
+                const icons = [Leaf, Feather, Palette];
+                const Icon = icons[idx % icons.length];
+                return (
+                  <div key={idx} className="group relative p-6 md:p-7 bg-[#141414] border border-white/10 rounded-sm hover:border-amber-300/30 transition-all duration-300">
+                    <div className="flex items-center gap-3 mb-4">
+                      <div className="p-2 rounded-full bg-amber-950/40 border border-amber-500/20 text-amber-300">
+                        <Icon size={18} />
+                      </div>
+                      <div className="text-[11px] tracking-[0.25em] uppercase text-stone-500">0{idx + 1}</div>
+                    </div>
+                    <p className="text-stone-200/90 leading-loose tracking-wide text-sm md:text-[15px] font-light">
+                      {item}
+                    </p>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <div className="flex items-center gap-3">
+              <Compass size={18} className="text-amber-300" />
+              <h3 className="text-xl md:text-2xl font-light text-white">{currentT.visionActionsTitle}</h3>
+            </div>
+            <ul className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-5">
+              {(currentT.visionActions || []).map((item, idx) => (
+                <li key={idx} className="flex gap-4 items-start p-4 md:p-5 bg-[#121212] border border-white/5 rounded-sm">
+                  <div className="mt-0.5 shrink-0 flex items-center justify-center h-9 w-9 rounded-full border border-amber-300/30 text-amber-300">
+                    <BookOpen size={16} />
+                  </div>
+                  <p className="text-stone-200/90 leading-loose tracking-wide text-sm md:text-[15px] font-light">
+                    {item}
+                  </p>
+                </li>
+              ))}
+            </ul>
+          </div>
+
+          <figure className="max-w-4xl mx-auto text-center space-y-4 border-t border-b border-amber-300/20 py-10">
+            {(currentT.visionQuote || []).map((line, i) => (
+              <blockquote key={i} className="text-stone-200/95 italic leading-loose tracking-wider text-base md:text-2xl font-light">
+                {line}
+              </blockquote>
+            ))}
+            <figcaption className="pt-4 text-[11px] md:text-xs tracking-[0.35em] uppercase text-amber-300/80 flex items-center justify-center gap-2">
+              <MessageCircleHeart size={14} /> Lucy 坊 · Meet Lucy
+            </figcaption>
+          </figure>
         </div>
       </section>
 
@@ -830,12 +1084,12 @@ export default function App() {
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 pt-1">
-                            <input type="text" placeholder="Title (EN)" value={item.title_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
-                            <input type="text" placeholder="标题 (中文)" value={item.title_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
+                            <input type="text" placeholder="Title (EN) · 含 Resume/Statement 会自动变样式" value={item.title_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
+                            <input type="text" placeholder="标题 (中文) · 含「履历/自述」自动变样式" value={item.title_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                            <textarea rows={2} placeholder="Description (EN)" value={item.desc_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
-                            <textarea rows={2} placeholder="描述 (中文)" value={item.desc_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
+                            <textarea rows={5} placeholder="Description (EN)\n• 换行直接变段落；• 若 Resume 每行一条自动变列表；• Statement 自动变成引用样式" value={item.desc_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
+                            <textarea rows={5} placeholder="描述 (中文)\n• 双换行=分段；• 履历每行一条自动为列表；• 自述标题自动为引用样式" value={item.desc_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
                           </div>
                         </div>
                       ))}
