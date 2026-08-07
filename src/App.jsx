@@ -394,6 +394,7 @@ export default function App() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageBanner, setMessageBanner] = useState(null); // {level:'ok|warn|error', text}
   const [messages, setMessages] = useState([]);
+  const [selectedWork, setSelectedWork] = useState(null);
 
   function toastMessageBanner(level, text, duration = 7000) {
     setMessageBanner({ level, text });
