@@ -467,11 +467,14 @@ export default function App() {
       let inserted = false;
       if (supabase) {
         try {
-          ensureSuccess(await supabase.from('contact_messages').insert(cleanPayload), 'Insert contact_messages failed');
+          const result = await supabase.from('contact_messages').insert(cleanPayload);
+          if (result?.error) {
+            throw new Error(result.error.message || 'Insert contact_messages failed');
+          }
           inserted = true;
           localStorage.setItem(LS_KEY, String(now));
           setContactPayload({ name: '', contact: '', message: '', inquiry_type: 'collect' });
-          toastMessageBanner('ok', currentT.msgSuccess);
+          toastMessageBanner('ok', currentT.msgSuccess + ` · ${lang === 'en' ? 'We will reach you via ' : '后续我们将通过：'}${DEFAULT_NOTIFY_EMAIL}`);
         } catch (e) {
           console.warn('Submit contact via Supabase failed, fallback to mailto.', e);
           inserted = false;
@@ -629,7 +632,7 @@ export default function App() {
   };
 
   async function loadMessages() {
-    if (!supabase || !session) { setMessages([]); return; }
+    if (!supabase || !user) { setMessages([]); return; }
     try {
       const { data, error } = await supabase
         .from('contact_messages')
@@ -650,15 +653,10 @@ export default function App() {
   }
 
   async function updateMessageStatus(id, nextStatus) {
-    if (!supabase || !session) return;
+    if (!supabase || !user) return;
     try {
-      const ensureSuccess = (result, label) => {
-        if (result?.error) throw new Error(`${label}: ${result.error.message}`);
-      };
-      ensureSuccess(
-        await supabase.from('contact_messages').update({ status: nextStatus }).eq('id', id),
-        'Update contact_messages status failed'
-      );
+      const result = await supabase.from('contact_messages').update({ status: nextStatus }).eq('id', id);
+      if (result?.error) throw new Error(result.error.message || 'Update contact_messages status failed');
       setMessages((prev) => prev.map((m) => (m.id === id ? { ...m, status: nextStatus } : m)));
     } catch (e) {
       console.warn(e);
@@ -667,16 +665,11 @@ export default function App() {
   }
 
   async function deleteMessage(id) {
-    if (!supabase || !session) return;
+    if (!supabase || !user) return;
     if (!window.confirm(lang === 'en' ? 'Delete this message permanently?' : '确认要永久删除这条留言吗？')) return;
     try {
-      const ensureSuccess = (result, label) => {
-        if (result?.error) throw new Error(`${label}: ${result.error.message}`);
-      };
-      ensureSuccess(
-        await supabase.from('contact_messages').delete().eq('id', id),
-        'Delete contact_message failed'
-      );
+      const result = await supabase.from('contact_messages').delete().eq('id', id);
+      if (result?.error) throw new Error(result.error.message || 'Delete contact_message failed');
       setMessages((prev) => prev.filter((m) => m.id !== id));
     } catch (e) {
       console.warn(e);
