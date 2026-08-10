@@ -464,11 +464,25 @@ export default function App() {
         status: 'new'
       };
 
+      console.group('【contact_messages 诊断】Supabase 请求上下文');
+      console.log('supabaseUrl =', supabaseUrl, '(前后各 12 字符 = ', supabaseUrl.slice(0,12), '...', supabaseUrl.slice(-12), ')');
+      console.log('supabaseKey 前后段 =', supabaseKey.slice(0,12), '...', supabaseKey.slice(-10), '(完整长度 =', supabaseKey.length, ')');
+      console.log('cleanPayload =', cleanPayload);
+      console.groupEnd();
+
       let inserted = false;
+      let supabaseErr = null;
       if (supabase) {
         try {
           const result = await supabase.from('contact_messages').insert(cleanPayload);
+          console.log('【contact_messages 诊断】Supabase insert 返回 result =', result);
           if (result?.error) {
+            supabaseErr = {
+              code: result.error.code,
+              message: result.error.message,
+              hint: result.error.hint,
+              details: result.error.details
+            };
             throw new Error(result.error.message || 'Insert contact_messages failed');
           }
           inserted = true;
@@ -476,14 +490,15 @@ export default function App() {
           setContactPayload({ name: '', contact: '', message: '', inquiry_type: 'collect' });
           toastMessageBanner('ok', currentT.msgSuccess + ` · ${lang === 'en' ? 'We will reach you via ' : '后续我们将通过：'}${DEFAULT_NOTIFY_EMAIL}`);
         } catch (e) {
-          console.warn('Submit contact via Supabase failed, fallback to mailto.', e);
+          console.warn('Submit contact via Supabase failed, fallback to mailto.', e, '详细错误详情 =', supabaseErr);
           inserted = false;
         }
       }
 
       if (!inserted) {
         openMailtoFallback();
-        toastMessageBanner('warn', currentT.msgFallbackHint, 9000);
+        const extra = supabaseErr ? ` (Supabase code=${supabaseErr.code}; msg=${supabaseErr.message})` : '';
+        toastMessageBanner('warn', currentT.msgFallbackHint + extra, 15000);
       }
     } catch (err) {
       console.error(err);
