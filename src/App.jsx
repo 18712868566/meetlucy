@@ -1,5 +1,5 @@
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, ZoomIn, Link as LinkIcon, Leaf, Feather, BookOpen, Compass, Sparkles, Palette, MessageCircleHeart, Inbox, CheckCircle, MessageSquare, AlertTriangle, Copy, ChevronLeft, Shuffle, Truck, Package, Tag, DollarSign, ChevronDown, ChevronUp, Search, ShoppingBag } from 'lucide-react';
+import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, Link as LinkIcon, Leaf, Feather, BookOpen, Compass, Sparkles, Palette, MessageCircleHeart, Inbox, CheckCircle, MessageSquare, AlertTriangle, Copy, ChevronLeft, Shuffle, Truck, Package, Tag, DollarSign, ChevronDown, ChevronUp, Search, ShoppingBag } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -40,55 +40,6 @@ function TikTokIcon({ size = 20, className = "" }) {
     <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
       <path d="M9 12a4 4 0 1 0 4 4V4a5 5 0 0 0 5 5" />
     </svg>
-  );
-}
-
-// 高清图放大镜组件
-function ImageMagnifier({ src, alt }) {
-  const [showMagnifier, setShowMagnifier] = useState(false);
-  const [position, setPosition] = useState({ x: 0, y: 0 });
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
-
-  const handleMouseHover = (e) => {
-    const elem = e.currentTarget;
-    const { left, top, width, height } = elem.getBoundingClientRect();
-    const x = e.clientX - left;
-    const y = e.clientY - top;
-    setCursorPosition({ x, y });
-    setPosition({
-      x: (x / width) * 100,
-      y: (y / height) * 100,
-    });
-  };
-
-  return (
-    <div 
-      className="relative overflow-hidden cursor-crosshair flex items-center justify-center h-full w-full select-none bg-black/40"
-      onMouseEnter={() => setShowMagnifier(true)}
-      onMouseLeave={() => setShowMagnifier(false)}
-      onMouseMove={handleMouseHover}
-    >
-      <img src={src || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675'} alt={alt} className="max-h-[70vh] w-full object-contain pointer-events-none" />
-      <div className="absolute bottom-3 left-3 bg-black/70 backdrop-blur-md px-3 py-1 rounded-sm text-[11px] text-amber-200 flex items-center gap-1.5 pointer-events-none">
-        <ZoomIn size={13} />
-        <span>Hover to Magnify / 悬停查看微距细节</span>
-      </div>
-      {showMagnifier && (
-        <div 
-          className="absolute pointer-events-none border-2 border-amber-300/80 rounded-full shadow-2xl bg-no-repeat z-30"
-          style={{
-            width: '160px',
-            height: '160px',
-            top: `${cursorPosition.y - 80}px`,
-            left: `${cursorPosition.x - 80}px`,
-            backgroundImage: `url(${src})`,
-            backgroundPosition: `${position.x}% ${position.y}%`,
-            backgroundSize: '350% 350%',
-            boxShadow: '0 10px 30px rgba(0,0,0,0.8)',
-          }}
-        />
-      )}
-    </div>
   );
 }
 
@@ -722,13 +673,24 @@ export default function App() {
   }
 
   function closeWorkDetail() {
+    const wasWorkView = hashRoute.view === 'work';
     if (window.location.hash && /^#\/work\//i.test(window.location.hash)) {
       history.replaceState(null, document.title, window.location.pathname + window.location.search + '#works');
     }
     setWorkLightboxOpen(false);
+    if (wasWorkView) {
+      setHashRoute({ view: 'home', workId: null });
+    }
     setTimeout(() => {
-      document.getElementById('works')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 30);
+      const el = document.getElementById('works');
+      if (el) {
+        el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      } else {
+        setTimeout(() => {
+          document.getElementById('works')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        }, 80);
+      }
+    }, 60);
   }
 
   const selectedWork = useMemo(() => {
@@ -769,6 +731,403 @@ export default function App() {
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
   }, []);
+
+  const renderWorkDetail = (
+    (() => {
+      const work = selectedWork;
+      if (!work) return null;
+      try {
+        const safeCurrentT = t[lang] || t.en;
+        const wTitle = lang === 'en' ? (work.title_en || '') : (work.title_zh || '');
+        const wDesc = lang === 'en' ? (work.description_en || '') : (work.description_zh || '');
+        const wCat = lang === 'en' ? (work.category_label_en || work.category || '') : (work.category_label_zh || work.category || '');
+        const wMaterial = lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '');
+        const wShipMethods = lang === 'en' ? (work.shipping_methods_en || '') : (work.shipping_methods_zh || '');
+        const wFraming = lang === 'en' ? (work.framing_en || '') : (work.framing_zh || '');
+        const avail = String(work.availability || 'available');
+        const availLabel =
+          avail === 'available'  ? safeCurrentT.workAvailabilityAvailable :
+          avail === 'reserved'   ? safeCurrentT.workAvailabilityReserved :
+          avail === 'sold'       ? safeCurrentT.workAvailabilitySold :
+          avail === 'exhibition' ? safeCurrentT.workAvailabilityExhibition : '';
+        const availBadge =
+          avail === 'sold' ? 'bg-rose-950/80 text-rose-200 border-rose-500/40' :
+          avail === 'exhibition' ? 'bg-indigo-950/80 text-indigo-200 border-indigo-500/40' :
+          avail === 'reserved' ? 'bg-amber-950/80 text-amber-200 border-amber-500/40' :
+          'bg-emerald-950/80 text-emerald-200 border-emerald-500/40';
+        const priceUsd = Number(work.price_usd || 0);
+        const priceCny = Number(work.price_cny || 0);
+        const hasAnyPrice = priceUsd > 0 || priceCny > 0;
+        const primaryCurrency = workCurrency;
+        const primaryPriceAmt = primaryCurrency === 'USD' ? priceUsd : priceCny;
+        const altPriceAmt = primaryCurrency === 'USD' ? priceCny : priceUsd;
+        const primaryPriceStr = primaryPriceAmt > 0 ? currencyFormat(primaryPriceAmt, primaryCurrency) : null;
+        const altPriceStr = altPriceAmt > 0 ? currencyFormat(altPriceAmt, primaryCurrency === 'USD' ? 'CNY' : 'USD') : null;
+        const shipFeeUsd = Number(work.shipping_fee_usd || 0);
+        const shipFeeCny = Number(work.shipping_fee_cny || 0);
+        const shipFeeAmt = primaryCurrency === 'USD' ? shipFeeUsd : shipFeeCny;
+        const shipFeeStr = shipFeeAmt > 0 ? currencyFormat(shipFeeAmt, primaryCurrency) : null;
+        const hasShipFree = !shipFeeStr && (!shipFeeUsd && !shipFeeCny);
+
+        const ctaLabel =
+          avail === 'exhibition' ? safeCurrentT.workCtaExhibition :
+          avail === 'sold' ? safeCurrentT.workCtaCustomOrder :
+          avail === 'reserved' ? safeCurrentT.workCtaReserveNext :
+          hasAnyPrice ? safeCurrentT.workCtaInquire : safeCurrentT.workCtaInquire;
+
+        const gallery = workGallery;
+        const totalImages = gallery.length;
+        const safeIdx = workGalleryImgIdx >= totalImages ? (totalImages - 1 < 0 ? 0 : totalImages - 1) : (workGalleryImgIdx < 0 ? 0 : workGalleryImgIdx);
+        const currentImage = gallery[safeIdx] || gallery[0] || '';
+
+        return (
+          <section id="work-detail" className="relative pt-28 pb-28 md:pt-36 md:pb-32 px-6 md:px-20 bg-[#0a0a0a] min-h-screen">
+            <div className="max-w-7xl mx-auto relative z-10">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 md:mb-10">
+                <button onClick={closeWorkDetail} className="inline-flex items-center gap-2 text-stone-300 hover:text-amber-300 transition-colors text-sm md:text-base tracking-wider">
+                  <ChevronLeft size={18} />
+                  {safeCurrentT.workBackBtn}
+                </button>
+                <div className="flex items-center gap-2 md:gap-3">
+                  <button
+                    onClick={() => copyWorkInfo(work)}
+                    className="inline-flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 md:py-2 text-[11px] md:text-xs rounded-full border border-white/20 text-stone-300 hover:bg-white/10 hover:text-white transition-colors tracking-wider"
+                    title={safeCurrentT.workCtaCopyInfo}
+                  >
+                    <Copy size={13} />
+                    {safeCurrentT.workCtaCopyInfo}
+                  </button>
+                  <a
+                    href={currentImage ? currentImage : ''}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => { if (!currentImage) e.preventDefault(); }}
+                    className="inline-flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 md:py-2 text-[11px] md:text-xs rounded-full border border-amber-500/40 text-amber-200 hover:bg-amber-950/40 transition-colors tracking-wider"
+                    title={safeCurrentT.workViewOriginal}
+                  >
+                    <Search size={13} />
+                    {safeCurrentT.workViewOriginal}
+                  </a>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-10 lg:gap-14">
+                <div className="lg:col-span-3 space-y-4">
+                  <div
+                    className="relative bg-black rounded-sm overflow-hidden aspect-square w-full select-none cursor-pointer"
+                    onClick={() => currentImage && setWorkLightboxOpen(true)}
+                  >
+                    <div className="lg:hidden absolute left-0 right-0 top-1/2 -translate-y-1/2 z-10 flex justify-between px-2 pointer-events-none">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.max(0, i - 1)); }}
+                        className="w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center pointer-events-auto backdrop-blur"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.min(totalImages - 1, i + 1)); }}
+                        className="w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center pointer-events-auto backdrop-blur"
+                        aria-label="Next image"
+                      >
+                        <ArrowUpRight size={18} />
+                      </button>
+                    </div>
+                    <div
+                      className="lg:hidden h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory whitespace-nowrap no-scrollbar"
+                      style={{ WebkitOverflowScrolling: 'touch' }}
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const idx = Math.round(el.scrollLeft / el.clientWidth);
+                        if (idx !== workGalleryImgIdx && idx >= 0 && idx < totalImages) {
+                          setWorkGalleryImgIdx(idx);
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {gallery.map((u, i) => (
+                        <img
+                          key={i}
+                          src={u}
+                          alt={`${wTitle || 'Artwork'} ${i + 1}`}
+                          className="inline-block w-full h-full object-contain snap-center align-top"
+                          draggable={false}
+                        />
+                      ))}
+                    </div>
+                    <div className="hidden lg:block w-full h-full">
+                      {currentImage ? (
+                        <img
+                          src={currentImage}
+                          alt={wTitle || 'Artwork HD'}
+                          className="w-full h-full object-contain select-none pointer-events-none"
+                          draggable={false}
+                        />
+                      ) : (
+                        <div className="w-full h-full flex items-center justify-center text-stone-500 text-xs tracking-widest">
+                          {safeCurrentT.workNotFound || 'No image'}
+                        </div>
+                      )}
+                    </div>
+                    {totalImages > 0 && (
+                      <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-sm bg-black/65 text-white text-[11px] tracking-wider backdrop-blur">
+                        {safeCurrentT.workImageIndex.replace('{1}', String(safeIdx + 1)).replace('{2}', String(totalImages))}
+                      </div>
+                    )}
+                  </div>
+                  {totalImages > 1 && (
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                      {gallery.map((u, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setWorkGalleryImgIdx(i)}
+                          className={`shrink-0 w-16 md:w-20 h-16 md:h-20 rounded-sm border overflow-hidden bg-black transition-all ${i === safeIdx ? 'border-amber-400 ring-2 ring-amber-400/40' : 'border-white/15 hover:border-white/40'}`}
+                          aria-label={`Thumbnail ${i + 1}`}
+                        >
+                          <img src={u} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:col-span-2 lg:sticky lg:top-28 space-y-5 md:space-y-6 pb-32 lg:pb-8">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        {wCat && (
+                          <span className="px-2.5 py-1 bg-amber-950/45 border border-amber-500/30 text-amber-300 text-[11px] rounded-sm tracking-wider">
+                            {wCat}
+                          </span>
+                        )}
+                        {availLabel && (
+                          <span className={`px-2.5 py-1 text-[11px] rounded-sm border tracking-wider ${availBadge}`}>
+                            {availLabel}
+                          </span>
+                        )}
+                      </div>
+                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-light text-white leading-snug">
+                        {wTitle || (safeCurrentT.workNotFound || 'Untitled')}
+                      </h1>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2 text-sm text-stone-300">
+                    {(work.year || work.size || wMaterial) && (
+                      <ul className="divide-y divide-white/10 border-y border-white/10 py-2 space-y-2">
+                        {work.year && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Year' : '年份'}</span><span>{work.year}</span></li>}
+                        {work.size && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Size' : '尺寸'}</span><span>{work.size}</span></li>}
+                        {wMaterial && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Material' : '材质'}</span><span>{wMaterial}</span></li>}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className={`rounded-sm p-4 md:p-5 border space-y-3 ${hasAnyPrice ? 'bg-[#141414] border-amber-500/30' : 'bg-[#141414] border-white/10'}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="inline-flex items-center gap-2 text-amber-300">
+                        <DollarSign size={16} />
+                        <span className="text-[11px] tracking-[0.25em] uppercase">{safeCurrentT.workProductTitle}</span>
+                      </div>
+                      {hasAnyPrice && (
+                        <div className="inline-flex rounded-full border border-white/20 overflow-hidden text-[11px] tracking-widest">
+                          <button
+                            onClick={() => setWorkCurrency('USD')}
+                            className={`px-3 py-1.5 transition-colors ${workCurrency === 'USD' ? 'bg-white text-black' : 'text-stone-300 hover:bg-white/10'}`}
+                          >
+                            USD
+                          </button>
+                          <button
+                            onClick={() => setWorkCurrency('CNY')}
+                            className={`px-3 py-1.5 transition-colors ${workCurrency === 'CNY' ? 'bg-white text-black' : 'text-stone-300 hover:bg-white/10'}`}
+                          >
+                            CNY
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {hasAnyPrice ? (
+                      <div className="space-y-2">
+                        <div className="flex items-baseline gap-3">
+                          <span className={`text-2xl md:text-3xl font-light ${avail === 'sold' ? 'line-through text-stone-500' : 'text-white'}`}>
+                            {primaryPriceStr || currencyFormat(priceUsd || priceCny, priceUsd > 0 ? 'USD' : 'CNY') || (safeCurrentT.workPriceOnRequest || 'Price on Request')}
+                          </span>
+                          {altPriceStr && (
+                            <span className="text-xs text-stone-500 tracking-wider">
+                              ≈ {altPriceStr}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
+                          <Tag size={12} />
+                          {primaryCurrency === 'USD' ? (lang === 'en' ? 'Prices in USD. All final transactions in agreed currency.' : '标价为美元，最终结算以双方确认币种为准。')
+                                                     : (lang === 'en' ? 'Prices in CNY. All final transactions in agreed currency.' : '标价为人民币，最终结算以双方确认币种为准。')}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-amber-200 text-sm tracking-wider font-light">
+                        {safeCurrentT.workPriceOnRequest}
+                      </div>
+                    )}
+
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <div className="flex items-center gap-2 text-xs text-stone-300">
+                        <Truck size={14} className="text-amber-300 shrink-0" />
+                        <span className="font-medium text-stone-200">{safeCurrentT.workShippingFee}</span>
+                        <span className="text-stone-400">
+                          {hasShipFree ? safeCurrentT.workShippingFree : shipFeeStr || (lang === 'en' ? 'Contact for rates' : '运费咨询')}
+                        </span>
+                      </div>
+                      {wShipMethods && (
+                        <div className="flex items-start gap-2 text-xs text-stone-300">
+                          <Package size={14} className="text-amber-300 shrink-0 mt-0.5" />
+                          <span className="font-medium text-stone-200 mr-1">{safeCurrentT.workShippingMethods}</span>
+                          <span className="text-stone-400 leading-relaxed">{wShipMethods}</span>
+                        </div>
+                      )}
+                      {wFraming && (
+                        <div className="flex items-start gap-2 text-xs text-stone-300">
+                          <Shuffle size={14} className="text-amber-300 shrink-0 mt-0.5" />
+                          <span className="font-medium text-stone-200 mr-1">{safeCurrentT.workFraming}</span>
+                          <span className="text-stone-400 leading-relaxed">{wFraming}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-sm border border-white/10 bg-[#141414] overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setWorkProductFold(v => !v)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+                      aria-expanded={!workProductFold}
+                    >
+                      <span className="inline-flex items-center gap-2 text-sm text-white tracking-wider">
+                        <Package size={16} className="text-amber-300" />
+                        {safeCurrentT.workDetailTitle}
+                      </span>
+                      <span className="text-stone-400">
+                        {workProductFold ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                      </span>
+                    </button>
+                    {!workProductFold && (
+                      <div className="px-4 pb-4 pt-1 text-sm md:text-[15px] font-light text-stone-200 leading-loose tracking-wide">
+                        <div className={`${workDescFold ? 'line-clamp-4' : ''}`}>
+                          {wDesc ? wDesc.split(/\n/).filter(Boolean).map((line, i) => (
+                            <p key={i} className="mb-2 last:mb-0">{line}</p>
+                          )) : (
+                            <p className="text-stone-500 italic text-xs">{lang === 'en' ? 'No additional description.' : '暂无更多描述。'}</p>
+                          )}
+                        </div>
+                        {wDesc && (wDesc.length > 160 || wDesc.split(/\n/).length > 4) && (
+                          <button
+                            type="button"
+                            onClick={() => setWorkDescFold(v => !v)}
+                            className="mt-2 inline-flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 tracking-wider"
+                          >
+                            {workDescFold ? safeCurrentT.workDescMore : safeCurrentT.workDescLess}
+                            {workDescFold ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="fixed inset-x-0 bottom-0 z-[180] lg:hidden border-t border-white/15 bg-gradient-to-b from-black/70 via-black/85 to-[#0a0a0a] backdrop-blur-md">
+                <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[11px] text-stone-400 tracking-wider">{wCat}{availLabel ? ` · ${availLabel}` : ''}</div>
+                    <div className="truncate text-sm text-white">{wTitle}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => currentImage && setWorkLightboxOpen(true)}
+                      className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-white/20 text-stone-200 hover:bg-white/10"
+                      title={safeCurrentT.workViewOriginal}
+                      aria-label={safeCurrentT.workViewOriginal}
+                    >
+                      <Search size={16} />
+                    </button>
+                    <button
+                      onClick={() => inquireWork(work)}
+                      className={`h-10 px-4 md:px-5 inline-flex items-center gap-1.5 rounded-full tracking-[0.2em] text-xs font-medium transition-all ${
+                        avail === 'sold' ? 'bg-stone-700 text-stone-100 hover:bg-stone-600' :
+                        avail === 'exhibition' ? 'bg-indigo-700 text-white hover:bg-indigo-600' :
+                        'bg-amber-300 text-black hover:bg-amber-200'
+                      }`}
+                    >
+                      <ShoppingBag size={14} />
+                      {ctaLabel}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {workLightboxOpen && currentImage && (
+                <div
+                  className="fixed inset-0 z-[220] bg-black/95 backdrop-blur-xl p-3 md:p-8 flex items-center justify-center animate-fadeIn"
+                  onClick={() => setWorkLightboxOpen(false)}
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setWorkLightboxOpen(false); }}
+                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/60 text-white hover:bg-white hover:text-black transition-colors"
+                    aria-label="Close lightbox"
+                  >
+                    <X size={18} />
+                  </button>
+                  <div className="absolute top-4 left-4 z-20 flex gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.max(0, i - 1)); }}
+                      className="p-2 rounded-full bg-black/60 text-white disabled:opacity-40 hover:bg-white hover:text-black transition-colors"
+                      disabled={safeIdx <= 0}
+                      aria-label="Previous"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.min(totalImages - 1, i + 1)); }}
+                      className="p-2 rounded-full bg-black/60 text-white disabled:opacity-40 hover:bg-white hover:text-black transition-colors"
+                      disabled={safeIdx >= totalImages - 1}
+                      aria-label="Next"
+                    >
+                      <ArrowUpRight size={18} />
+                    </button>
+                  </div>
+                  <img
+                    src={currentImage}
+                    alt={wTitle || 'Artwork'}
+                    className="max-w-full max-h-full w-auto h-auto object-contain select-none touch-none"
+                    onClick={(e) => e.stopPropagation()}
+                    draggable={false}
+                    style={{ maxWidth: 'calc(100vw - 48px)', maxHeight: 'calc(100vh - 48px)' }}
+                  />
+                  {totalImages > 1 && (
+                    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 text-white text-[11px] tracking-widest backdrop-blur">
+                      {safeIdx + 1} / {totalImages}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </section>
+        );
+      } catch (err) {
+        const safeCurrentT = t[lang] || t.en;
+        console.error('renderWorkDetail failed', err);
+        return (
+          <section id="work-detail" className="relative pt-36 pb-28 md:pt-40 md:pb-32 px-6 md:px-20 bg-[#0a0a0a] min-h-screen">
+            <div className="max-w-2xl mx-auto space-y-6 text-center">
+              <h2 className="text-2xl md:text-3xl text-white font-light">{safeCurrentT.workNotFound}</h2>
+              <button onClick={closeWorkDetail} className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-white text-black text-xs tracking-widest hover:bg-amber-300 transition-colors mx-auto">
+                <ChevronLeft size={16} /> {safeCurrentT.workNotFoundBack}
+              </button>
+            </div>
+          </section>
+        );
+      }
+    })()
+  );
 
   useEffect(() => {
     setWorkGalleryImgIdx(0);
@@ -869,6 +1228,16 @@ export default function App() {
                 ? String(item.detail_images).split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(u => normalizeImageUrl(u))
                 : [],
             availability: item.availability || 'available',
+            price_cny: item.price_cny === '' || item.price_cny === null || item.price_cny === undefined ? null : Number(item.price_cny) || 0,
+            price_usd: item.price_usd === '' || item.price_usd === null || item.price_usd === undefined ? null : Number(item.price_usd) || 0,
+            shipping_fee_cny: item.shipping_fee_cny === '' || item.shipping_fee_cny === null || item.shipping_fee_cny === undefined ? 0 : Number(item.shipping_fee_cny) || 0,
+            shipping_fee_usd: item.shipping_fee_usd === '' || item.shipping_fee_usd === null || item.shipping_fee_usd === undefined ? 0 : Number(item.shipping_fee_usd) || 0,
+            shipping_methods_en: item.shipping_methods_en || '',
+            shipping_methods_zh: item.shipping_methods_zh || '',
+            framing_en: item.framing_en || '',
+            framing_zh: item.framing_zh || '',
+            seo_slug_en: item.seo_slug_en || '',
+            seo_slug_zh: item.seo_slug_zh || '',
           })));
         }
 
@@ -917,6 +1286,10 @@ export default function App() {
           price_usd: rest.price_usd === '' || rest.price_usd === null || rest.price_usd === undefined ? null : Number(rest.price_usd) || 0,
           shipping_fee_cny: rest.shipping_fee_cny === '' || rest.shipping_fee_cny === null || rest.shipping_fee_cny === undefined ? 0 : Number(rest.shipping_fee_cny) || 0,
           shipping_fee_usd: rest.shipping_fee_usd === '' || rest.shipping_fee_usd === null || rest.shipping_fee_usd === undefined ? 0 : Number(rest.shipping_fee_usd) || 0,
+          shipping_methods_en: (rest.shipping_methods_en && String(rest.shipping_methods_en).trim()) ? String(rest.shipping_methods_en).trim() : null,
+          shipping_methods_zh: (rest.shipping_methods_zh && String(rest.shipping_methods_zh).trim()) ? String(rest.shipping_methods_zh).trim() : null,
+          framing_en: (rest.framing_en && String(rest.framing_en).trim()) ? String(rest.framing_en).trim() : null,
+          framing_zh: (rest.framing_zh && String(rest.framing_zh).trim()) ? String(rest.framing_zh).trim() : null,
           availability: rest.availability || 'available',
           seo_slug_zh: rest.seo_slug_zh === '' ? null : (rest.seo_slug_zh || null),
           seo_slug_en: rest.seo_slug_en === '' ? null : (rest.seo_slug_en || null),
@@ -1235,11 +1608,18 @@ export default function App() {
                   const isError = !!currentImage && !!status.error;
                   if (!isMissing && !isLoading && !isError) return null;
                   return (
-                    <div className="absolute inset-0 flex items-center justify-center bg-black/60">
-                      <div className="flex flex-col items-center gap-3">
-                        {isLoading && <div className="h-6 w-6 rounded-full border border-white/25 border-t-amber-300 animate-spin" />}
-                        <div className="text-[11px] tracking-[0.3em] text-stone-300">
-                          {isLoading ? 'LOADING' : isMissing ? 'NO IMAGE' : 'LOAD FAILED'}
+                    <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-stone-950 via-[#141414] to-black border border-dashed border-amber-300/15 rounded-sm">
+                      <div className="flex flex-col items-center gap-4 px-6 py-5">
+                        {isLoading && <div className="h-12 w-12 rounded-full border-2 border-white/15 border-t-amber-300/80 animate-spin" />}
+                        {isMissing && <div className="h-14 w-14 rounded-full bg-amber-950/40 border border-amber-300/25 text-amber-300 flex items-center justify-center"><Search size={22} /></div>}
+                        {isError && <div className="h-14 w-14 rounded-full bg-rose-950/40 border border-rose-400/25 text-rose-300 flex items-center justify-center"><AlertTriangle size={22} /></div>}
+                        <div className="text-center space-y-1">
+                          <div className="text-sm md:text-base tracking-[0.2em] text-stone-200 font-light">
+                            {isLoading ? 'LOADING IMAGE' : isMissing ? 'NO IMAGE SET' : 'IMAGE LOAD FAILED'}
+                          </div>
+                          <div className="text-[11px] md:text-xs tracking-widest text-stone-500 leading-relaxed">
+                            {isLoading ? '正在加载作品图，请稍候…' : isMissing ? '请在 CMS Biography 板块上传对应图片，此处会自动占位保持版面。' : '图片 URL 无法访问，请在 CMS 中检查或更换链接。'}
+                          </div>
                         </div>
                       </div>
                     </div>
@@ -1424,371 +1804,7 @@ export default function App() {
       )}
 
       {/* 作品独立详情二级页（方案2：全屏独占，URL hash #/work/:slug） */}
-      {selectedWork && (() => {
-        const work = selectedWork;
-        const wTitle = lang === 'en' ? (work.title_en || '') : (work.title_zh || '');
-        const wDesc = lang === 'en' ? (work.description_en || '') : (work.description_zh || '');
-        const wCat = lang === 'en' ? (work.category_label_en || work.category || '') : (work.category_label_zh || work.category || '');
-        const wMaterial = lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '');
-        const wShipMethods = lang === 'en' ? (work.shipping_methods_en || '') : (work.shipping_methods_zh || '');
-        const wFraming = lang === 'en' ? (work.framing_en || '') : (work.framing_zh || '');
-        const avail = String(work.availability || 'available');
-        const availLabel =
-          avail === 'available'  ? currentT.workAvailabilityAvailable :
-          avail === 'reserved'   ? currentT.workAvailabilityReserved :
-          avail === 'sold'       ? currentT.workAvailabilitySold :
-          avail === 'exhibition' ? currentT.workAvailabilityExhibition : '';
-        const availBadge =
-          avail === 'sold' ? 'bg-rose-950/80 text-rose-200 border-rose-500/40' :
-          avail === 'exhibition' ? 'bg-indigo-950/80 text-indigo-200 border-indigo-500/40' :
-          avail === 'reserved' ? 'bg-amber-950/80 text-amber-200 border-amber-500/40' :
-          'bg-emerald-950/80 text-emerald-200 border-emerald-500/40';
-        const priceUsd = Number(work.price_usd || 0);
-        const priceCny = Number(work.price_cny || 0);
-        const hasAnyPrice = priceUsd > 0 || priceCny > 0;
-        const primaryCurrency = workCurrency;
-        const primaryPriceAmt = primaryCurrency === 'USD' ? priceUsd : priceCny;
-        const altPriceAmt = primaryCurrency === 'USD' ? priceCny : priceUsd;
-        const primaryPriceStr = primaryPriceAmt > 0 ? currencyFormat(primaryPriceAmt, primaryCurrency) : null;
-        const altPriceStr = altPriceAmt > 0 ? currencyFormat(altPriceAmt, primaryCurrency === 'USD' ? 'CNY' : 'USD') : null;
-        const shipFeeUsd = Number(work.shipping_fee_usd || 0);
-        const shipFeeCny = Number(work.shipping_fee_cny || 0);
-        const shipFeeAmt = primaryCurrency === 'USD' ? shipFeeUsd : shipFeeCny;
-        const shipFeeStr = shipFeeAmt > 0 ? currencyFormat(shipFeeAmt, primaryCurrency) : null;
-        const hasShipFree = !shipFeeStr && (!shipFeeUsd && !shipFeeCny);
-
-        const ctaLabel =
-          avail === 'exhibition' ? currentT.workCtaExhibition :
-          avail === 'sold' ? currentT.workCtaCustomOrder :
-          avail === 'reserved' ? currentT.workCtaReserveNext :
-          hasAnyPrice ? currentT.workCtaInquire : currentT.workCtaInquire;
-
-        const gallery = workGallery;
-        const totalImages = gallery.length;
-        const currentImage = gallery[workGalleryImgIdx] || gallery[0] || '';
-
-        return (
-          <section id="work-detail" className="relative pt-28 pb-28 md:pt-36 md:pb-32 px-6 md:px-20 bg-[#0a0a0a] min-h-screen">
-            <div className="max-w-7xl mx-auto relative z-10">
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 md:mb-10">
-                <button onClick={closeWorkDetail} className="inline-flex items-center gap-2 text-stone-300 hover:text-amber-300 transition-colors text-sm md:text-base tracking-wider">
-                  <ChevronLeft size={18} />
-                  {currentT.workBackBtn}
-                </button>
-                <div className="flex items-center gap-2 md:gap-3">
-                  <button
-                    onClick={() => copyWorkInfo(work)}
-                    className="inline-flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 md:py-2 text-[11px] md:text-xs rounded-full border border-white/20 text-stone-300 hover:bg-white/10 hover:text-white transition-colors tracking-wider"
-                    title={currentT.workCtaCopyInfo}
-                  >
-                    <Copy size={13} />
-                    {currentT.workCtaCopyInfo}
-                  </button>
-                  <a
-                    href={currentImage ? currentImage : ''}
-                    target="_blank"
-                    rel="noreferrer"
-                    onClick={(e) => { if (!currentImage) e.preventDefault(); }}
-                    className="inline-flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 md:py-2 text-[11px] md:text-xs rounded-full border border-amber-500/40 text-amber-200 hover:bg-amber-950/40 transition-colors tracking-wider"
-                    title={currentT.workViewOriginal}
-                  >
-                    <Search size={13} />
-                    {currentT.workViewOriginal}
-                  </a>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-10 lg:gap-14">
-                <div className="lg:col-span-3 space-y-4">
-                  <div
-                    className="relative bg-black rounded-sm overflow-hidden aspect-square w-full select-none cursor-zoom-in"
-                    onClick={() => currentImage && setWorkLightboxOpen(true)}
-                  >
-                    <div className="lg:hidden absolute left-0 right-0 top-1/2 -translate-y-1/2 z-10 flex justify-between px-2 pointer-events-none">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.max(0, i - 1)); }}
-                        className="w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center pointer-events-auto backdrop-blur"
-                        aria-label="Previous image"
-                      >
-                        <ChevronLeft size={18} />
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.min(totalImages - 1, i + 1)); }}
-                        className="w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center pointer-events-auto backdrop-blur"
-                        aria-label="Next image"
-                      >
-                        <ArrowUpRight size={18} />
-                      </button>
-                    </div>
-                    <div
-                      className="lg:hidden h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory whitespace-nowrap no-scrollbar"
-                      style={{ WebkitOverflowScrolling: 'touch' }}
-                      onScroll={(e) => {
-                        const el = e.currentTarget;
-                        const idx = Math.round(el.scrollLeft / el.clientWidth);
-                        if (idx !== workGalleryImgIdx && idx >= 0 && idx < totalImages) {
-                          setWorkGalleryImgIdx(idx);
-                        }
-                      }}
-                      onClick={(e) => e.stopPropagation()}
-                    >
-                      {gallery.map((u, i) => (
-                        <img
-                          key={i}
-                          src={u}
-                          alt={`${wTitle || 'Artwork'} ${i + 1}`}
-                          className="inline-block w-full h-full object-contain snap-center align-top"
-                          draggable={false}
-                        />
-                      ))}
-                    </div>
-                    <div className="hidden lg:block w-full h-full">
-                      {currentImage && (
-                        <ImageMagnifier src={currentImage} alt={wTitle || 'Artwork HD'} />
-                      )}
-                    </div>
-                    {totalImages > 0 && (
-                      <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-sm bg-black/65 text-white text-[11px] tracking-wider backdrop-blur">
-                        {currentT.workImageIndex.replace('{1}', String(workGalleryImgIdx + 1)).replace('{2}', String(totalImages))}
-                      </div>
-                    )}
-                  </div>
-                  {totalImages > 1 && (
-                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
-                      {gallery.map((u, i) => (
-                        <button
-                          key={i}
-                          onClick={() => setWorkGalleryImgIdx(i)}
-                          className={`shrink-0 w-16 md:w-20 h-16 md:h-20 rounded-sm border overflow-hidden bg-black transition-all ${i === workGalleryImgIdx ? 'border-amber-400 ring-2 ring-amber-400/40' : 'border-white/15 hover:border-white/40'}`}
-                          aria-label={`Thumbnail ${i + 1}`}
-                        >
-                          <img src={u} alt="" className="w-full h-full object-cover" />
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                <div className="lg:col-span-2 lg:sticky lg:top-28 space-y-5 md:space-y-6 pb-32 lg:pb-8">
-                  <div className="flex flex-wrap items-start justify-between gap-3">
-                    <div className="space-y-2">
-                      <div className="flex flex-wrap gap-2">
-                        <span className="px-2.5 py-1 bg-amber-950/45 border border-amber-500/30 text-amber-300 text-[11px] rounded-sm tracking-wider">
-                          {wCat}
-                        </span>
-                        {availLabel && (
-                          <span className={`px-2.5 py-1 text-[11px] rounded-sm border tracking-wider ${availBadge}`}>
-                            {availLabel}
-                          </span>
-                        )}
-                      </div>
-                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-light text-white leading-snug">
-                        {wTitle}
-                      </h1>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2 text-sm text-stone-300">
-                    {(work.year || work.size || wMaterial) && (
-                      <ul className="divide-y divide-white/10 border-y border-white/10 py-2 space-y-2">
-                        {work.year && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Year' : '年份'}</span><span>{work.year}</span></li>}
-                        {work.size && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Size' : '尺寸'}</span><span>{work.size}</span></li>}
-                        {wMaterial && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Material' : '材质'}</span><span>{wMaterial}</span></li>}
-                      </ul>
-                    )}
-                  </div>
-
-                  <div className={`rounded-sm p-4 md:p-5 border space-y-3 ${hasAnyPrice ? 'bg-[#141414] border-amber-500/30' : 'bg-[#141414] border-white/10'}`}>
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="inline-flex items-center gap-2 text-amber-300">
-                        <DollarSign size={16} />
-                        <span className="text-[11px] tracking-[0.25em] uppercase">{currentT.workProductTitle}</span>
-                      </div>
-                      {hasAnyPrice && (
-                        <div className="inline-flex rounded-full border border-white/20 overflow-hidden text-[11px] tracking-widest">
-                          <button
-                            onClick={() => setWorkCurrency('USD')}
-                            className={`px-3 py-1.5 transition-colors ${workCurrency === 'USD' ? 'bg-white text-black' : 'text-stone-300 hover:bg-white/10'}`}
-                          >
-                            USD
-                          </button>
-                          <button
-                            onClick={() => setWorkCurrency('CNY')}
-                            className={`px-3 py-1.5 transition-colors ${workCurrency === 'CNY' ? 'bg-white text-black' : 'text-stone-300 hover:bg-white/10'}`}
-                          >
-                            CNY
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                    {hasAnyPrice ? (
-                      <div className="space-y-2">
-                        <div className="flex items-baseline gap-3">
-                          <span className={`text-2xl md:text-3xl font-light ${avail === 'sold' ? 'line-through text-stone-500' : 'text-white'}`}>
-                            {primaryPriceStr || currencyFormat(priceUsd || priceCny, priceUsd > 0 ? 'USD' : 'CNY')}
-                          </span>
-                          {altPriceStr && (
-                            <span className="text-xs text-stone-500 tracking-wider">
-                              ≈ {altPriceStr}
-                            </span>
-                          )}
-                        </div>
-                        <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
-                          <Tag size={12} />
-                          {primaryCurrency === 'USD' ? (lang === 'en' ? 'Prices in USD. All final transactions in agreed currency.' : '标价为美元，最终结算以双方确认币种为准。')
-                                                     : (lang === 'en' ? 'Prices in CNY. All final transactions in agreed currency.' : '标价为人民币，最终结算以双方确认币种为准。')}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="text-amber-200 text-sm tracking-wider font-light">
-                        {currentT.workPriceOnRequest}
-                      </div>
-                    )}
-
-                    <div className="space-y-2 pt-2 border-t border-white/10">
-                      <div className="flex items-center gap-2 text-xs text-stone-300">
-                        <Truck size={14} className="text-amber-300 shrink-0" />
-                        <span className="font-medium text-stone-200">{currentT.workShippingFee}</span>
-                        <span className="text-stone-400">
-                          {hasShipFree ? currentT.workShippingFree : shipFeeStr || (lang === 'en' ? 'Contact for rates' : '运费咨询')}
-                        </span>
-                      </div>
-                      {wShipMethods && (
-                        <div className="flex items-start gap-2 text-xs text-stone-300">
-                          <Package size={14} className="text-amber-300 shrink-0 mt-0.5" />
-                          <span className="font-medium text-stone-200 mr-1">{currentT.workShippingMethods}</span>
-                          <span className="text-stone-400 leading-relaxed">{wShipMethods}</span>
-                        </div>
-                      )}
-                      {wFraming && (
-                        <div className="flex items-start gap-2 text-xs text-stone-300">
-                          <Shuffle size={14} className="text-amber-300 shrink-0 mt-0.5" />
-                          <span className="font-medium text-stone-200 mr-1">{currentT.workFraming}</span>
-                          <span className="text-stone-400 leading-relaxed">{wFraming}</span>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="rounded-sm border border-white/10 bg-[#141414] overflow-hidden">
-                    <button
-                      type="button"
-                      onClick={() => setWorkProductFold(v => !v)}
-                      className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
-                      aria-expanded={!workProductFold}
-                    >
-                      <span className="inline-flex items-center gap-2 text-sm text-white tracking-wider">
-                        <Package size={16} className="text-amber-300" />
-                        {currentT.workDetailTitle}
-                      </span>
-                      <span className="text-stone-400">
-                        {workProductFold ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
-                      </span>
-                    </button>
-                    {!workProductFold && (
-                      <div className="px-4 pb-4 pt-1 text-sm md:text-[15px] font-light text-stone-200 leading-loose tracking-wide">
-                        <div className={`${workDescFold ? 'line-clamp-4' : ''}`}>
-                          {wDesc ? wDesc.split(/\n/).filter(Boolean).map((line, i) => (
-                            <p key={i} className="mb-2 last:mb-0">{line}</p>
-                          )) : (
-                            <p className="text-stone-500 italic text-xs">{lang === 'en' ? 'No additional description.' : '暂无更多描述。'}</p>
-                          )}
-                        </div>
-                        {wDesc && (wDesc.length > 160 || wDesc.split(/\n/).length > 4) && (
-                          <button
-                            type="button"
-                            onClick={() => setWorkDescFold(v => !v)}
-                            className="mt-2 inline-flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 tracking-wider"
-                          >
-                            {workDescFold ? currentT.workDescMore : currentT.workDescLess}
-                            {workDescFold ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-
-              <div className="fixed inset-x-0 bottom-0 z-[180] lg:hidden border-t border-white/15 bg-gradient-to-b from-black/70 via-black/85 to-[#0a0a0a] backdrop-blur-md">
-                <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-3">
-                  <div className="min-w-0 flex-1">
-                    <div className="truncate text-[11px] text-stone-400 tracking-wider">{wCat}{availLabel ? ` · ${availLabel}` : ''}</div>
-                    <div className="truncate text-sm text-white">{wTitle}</div>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <button
-                      onClick={() => currentImage && setWorkLightboxOpen(true)}
-                      className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-white/20 text-stone-200 hover:bg-white/10"
-                      title={currentT.workViewOriginal}
-                      aria-label={currentT.workViewOriginal}
-                    >
-                      <Search size={16} />
-                    </button>
-                    <button
-                      onClick={() => inquireWork(work)}
-                      className={`h-10 px-4 md:px-5 inline-flex items-center gap-1.5 rounded-full tracking-[0.2em] text-xs font-medium transition-all ${
-                        avail === 'sold' ? 'bg-stone-700 text-stone-100 hover:bg-stone-600' :
-                        avail === 'exhibition' ? 'bg-indigo-700 text-white hover:bg-indigo-600' :
-                        'bg-amber-300 text-black hover:bg-amber-200'
-                      }`}
-                    >
-                      <ShoppingBag size={14} />
-                      {ctaLabel}
-                    </button>
-                  </div>
-                </div>
-              </div>
-
-              {workLightboxOpen && currentImage && (
-                <div
-                  className="fixed inset-0 z-[220] bg-black/95 backdrop-blur-xl p-3 md:p-8 flex items-center justify-center animate-fadeIn"
-                  onClick={() => setWorkLightboxOpen(false)}
-                >
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setWorkLightboxOpen(false); }}
-                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/60 text-white hover:bg-white hover:text-black transition-colors"
-                    aria-label="Close lightbox"
-                  >
-                    <X size={18} />
-                  </button>
-                  <div className="absolute top-4 left-4 z-20 flex gap-2">
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.max(0, i - 1)); }}
-                      className="p-2 rounded-full bg-black/60 text-white disabled:opacity-40 hover:bg-white hover:text-black transition-colors"
-                      disabled={workGalleryImgIdx <= 0}
-                      aria-label="Previous"
-                    >
-                      <ChevronLeft size={18} />
-                    </button>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.min(totalImages - 1, i + 1)); }}
-                      className="p-2 rounded-full bg-black/60 text-white disabled:opacity-40 hover:bg-white hover:text-black transition-colors"
-                      disabled={workGalleryImgIdx >= totalImages - 1}
-                      aria-label="Next"
-                    >
-                      <ArrowUpRight size={18} />
-                    </button>
-                  </div>
-                  <img
-                    src={currentImage}
-                    alt={wTitle || 'Artwork'}
-                    className="max-w-full max-h-full w-auto h-auto object-contain select-none touch-none"
-                    onClick={(e) => e.stopPropagation()}
-                    draggable={false}
-                    style={{ maxWidth: 'calc(100vw - 48px)', maxHeight: 'calc(100vh - 48px)' }}
-                  />
-                  {totalImages > 1 && (
-                    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 text-white text-[11px] tracking-widest backdrop-blur">
-                      {workGalleryImgIdx + 1} / {totalImages}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </section>
-        );
-      })()}
+      {renderWorkDetail}
 
       {/* 美育愿景 (VISION) */}
       {!selectedWork && (
@@ -1978,7 +1994,7 @@ export default function App() {
       {/* 安全登录与管理后台抽屉面板 */}
       {isAdminOpen && (
         <div className="fixed inset-0 z-[250] bg-black/90 backdrop-blur-2xl flex justify-end">
-          <div className="w-full max-w-2xl bg-[#121212] border-l border-white/10 h-full flex flex-col shadow-2xl">
+          <div className="w-full max-w-5xl bg-[#121212] border-l border-white/10 h-full flex flex-col shadow-2xl">
             <div className="p-6 border-b border-white/10 flex justify-between items-center bg-[#161616]">
               <div className="flex items-center space-x-2">
                 <Lock size={18} className="text-amber-300" />
@@ -2032,10 +2048,10 @@ export default function App() {
               </div>
             ) : (
               <>
-                <div className="flex justify-between items-center px-6 py-3 bg-[#181818] border-b border-white/10 text-xs text-stone-400">
-                  <span>Logged in as: <strong className="text-amber-200">{user.email}</strong></span>
-                  <button onClick={handleLogout} className="text-red-400 hover:text-red-300 flex items-center gap-1">
-                    <LogOut size={14} /> {currentT.logoutBtn}
+                <div className="flex justify-between items-center px-6 py-4 bg-[#181818] border-b border-white/10 text-sm text-stone-300">
+                  <span>Logged in as: <strong className="text-amber-200 font-semibold">{user.email}</strong></span>
+                  <button onClick={handleLogout} className="text-red-400 hover:text-red-300 flex items-center gap-1.5">
+                    <LogOut size={16} /> <span className="font-medium">{currentT.logoutBtn}</span>
                   </button>
                 </div>
 
@@ -2052,50 +2068,50 @@ export default function App() {
                         setAdminSection(tab.key);
                         if (tab.key === 'messages') loadMessages();
                       }}
-                      className={`flex-1 py-4 text-xs tracking-widest ${adminSection === tab.key ? 'text-amber-300 border-b-2 border-amber-300 bg-white/5 font-medium' : 'text-stone-400'}`}
+                      className={`flex-1 py-5 text-sm tracking-[0.12em] ${adminSection === tab.key ? 'text-amber-300 border-b-2 border-amber-300 bg-white/5 font-semibold' : 'text-stone-400 hover:text-stone-200 hover:bg-white/5'}`}
                     >{tab.label}</button>
                   ))}
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                <div className="flex-1 overflow-y-auto p-8 space-y-8">
                   {saveToast && <div className="p-3 bg-emerald-950/60 border border-emerald-500/50 text-emerald-300 text-xs tracking-widest text-center rounded-sm animate-pulse">{currentT.saveSuccess}</div>}
                   
                   {/* 经历管理 */}
                   {adminSection === 'about' && (
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-stone-400">Manage Biography Cards</span>
-                        <button onClick={() => setAboutData([...aboutData, { title_zh: '中文标题', title_en: 'English Title', desc_zh: '中文描述', desc_en: 'English Desc', image: '' }])} className="px-3 py-1.5 bg-amber-300 text-black text-xs rounded-sm flex items-center gap-1"><Plus size={14} /> Add</button>
+                        <span className="text-sm text-stone-300">Manage Biography Cards · 个人经历卡片（图片/双语标题/描述）</span>
+                        <button onClick={() => setAboutData([...aboutData, { title_zh: '中文标题', title_en: 'English Title', desc_zh: '中文描述', desc_en: 'English Desc', image: '' }])} className="px-4 py-2 bg-amber-300 text-black text-sm rounded-sm flex items-center gap-1.5 font-medium hover:bg-white transition-colors shadow-lg"><Plus size={16} /> Add Card</button>
                       </div>
                       {aboutData.map((item, idx) => (
-                        <div key={idx} className="p-4 bg-[#1a1a1a] border border-white/10 rounded-sm space-y-3">
-                          <div className="flex justify-between"><span className="text-xs text-amber-300">Item #{idx + 1}</span><button onClick={() => setAboutData(aboutData.filter((_, i) => i !== idx))} className="text-red-400 text-xs flex items-center gap-1"><Trash2 size={14} /> Delete</button></div>
+                        <div key={idx} className="p-6 md:p-7 bg-[#1a1a1a] border border-white/10 rounded-sm space-y-5 shadow-lg hover:border-white/20 transition-colors">
+                          <div className="flex justify-between items-center pb-2 border-b border-white/10"><span className="text-sm md:text-base text-amber-200 font-semibold tracking-wide">◆ Card #{idx + 1}</span><button onClick={() => setAboutData(aboutData.filter((_, i) => i !== idx))} className="text-red-400 text-sm flex items-center gap-1.5 hover:text-red-300 hover:bg-red-950/30 px-2.5 py-1.5 rounded-sm transition-colors"><Trash2 size={15} /> Delete</button></div>
                           
                           <div className="space-y-1.5 pt-1">
-                            <label className="text-[10px] text-stone-400 uppercase flex items-center gap-1">
+                            <label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium flex items-center gap-1">
                               <LinkIcon size={12} className="text-amber-300" /> Biography Image URL (经历照片外链)
                             </label>
                             <div className="flex items-center gap-3">
                               {item.image && (
-                                <img src={item.image} alt="Preview" className="w-10 h-10 object-cover rounded-sm border border-white/20 shrink-0" />
+                                <img src={item.image} alt="Preview" className="w-16 h-16 md:w-20 md:h-20 object-cover rounded-sm border border-white/20 shrink-0 shadow-md" />
                               )}
                               <input 
                                 type="url" 
                                 placeholder="https://..." 
                                 value={item.image || ''} 
                                 onChange={e => { const arr = [...aboutData]; arr[idx].image = e.target.value; setAboutData(arr); }} 
-                                className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm focus:border-amber-300 focus:outline-none" 
+                                className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm focus:border-amber-300 focus:outline-none" 
                               />
                             </div>
                           </div>
 
                           <div className="grid grid-cols-2 gap-2 pt-1">
-                            <input type="text" placeholder="Title (EN) · 含 Resume/Statement 会自动变样式" value={item.title_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
-                            <input type="text" placeholder="标题 (中文) · 含「履历/自述」自动变样式" value={item.title_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
+                            <input type="text" placeholder="Title (EN) · 含 Resume/Statement 会自动变样式" value={item.title_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
+                            <input type="text" placeholder="标题 (中文) · 含「履历/自述」自动变样式" value={item.title_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].title_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                            <textarea rows={5} placeholder="Description (EN)\n• 换行直接变段落；• 若 Resume 每行一条自动变列表；• Statement 自动变成引用样式" value={item.desc_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
-                            <textarea rows={5} placeholder="描述 (中文)\n• 双换行=分段；• 履历每行一条自动为列表；• 自述标题自动为引用样式" value={item.desc_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
+                            <textarea rows={5} placeholder="Description (EN)\n• 换行直接变段落；• 若 Resume 每行一条自动变列表；• Statement 自动变成引用样式" value={item.desc_en || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_en = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm resize-none" />
+                            <textarea rows={5} placeholder="描述 (中文)\n• 双换行=分段；• 履历每行一条自动为列表；• 自述标题自动为引用样式" value={item.desc_zh || ''} onChange={e => { const arr = [...aboutData]; arr[idx].desc_zh = e.target.value; setAboutData(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm resize-none" />
                           </div>
                         </div>
                       ))}
@@ -2104,23 +2120,23 @@ export default function App() {
 
                   {/* 作品管理（双图：封面图外链 + 高清原画大图外链） */}
                   {adminSection === 'works' && (
-                    <div className="space-y-6">
+                    <div className="space-y-8">
                       <div className="flex justify-between items-center">
-                        <span className="text-xs text-stone-400">Manage Gallery Works (Cover & HD URLs)</span>
-                        <button onClick={() => setWorks([...works, { title_zh: '《新画作》', title_en: 'New Artwork', category: 'shanshui', category_label_zh: '青绿山水', category_label_en: 'Shanshui', year: '2026', size: '100x100cm', material_zh: '绢本设色 / 矿物颜料', material_en: 'Ink on Silk / Mineral Pigments', description_zh: '中文描述', description_en: 'English description', cover_image: '', image: '' }])} className="px-3 py-1.5 bg-amber-300 text-black text-xs rounded-sm flex items-center gap-1"><Plus size={14} /> Add Work</button>
+                        <span className="text-sm text-stone-300">Manage Gallery Works (Cover & HD URLs) · 作品管理（封面/高清图/商品信息）</span>
+                        <button onClick={() => setWorks([...works, { title_zh: '《新画作》', title_en: 'New Artwork', category: 'shanshui', category_label_zh: '青绿山水', category_label_en: 'Shanshui', year: '2026', size: '100x100cm', material_zh: '绢本设色 / 矿物颜料', material_en: 'Ink on Silk / Mineral Pigments', description_zh: '中文描述', description_en: 'English description', cover_image: '', image: '' }])} className="px-4 py-2 bg-amber-300 text-black text-sm rounded-sm flex items-center gap-1.5 font-medium hover:bg-white transition-colors shadow-lg"><Plus size={16} /> Add Work</button>
                       </div>
                       {works.map((work, idx) => (
-                        <div key={idx} className="p-4 bg-[#1a1a1a] border border-white/10 rounded-sm space-y-3">
-                          <div className="flex justify-between"><span className="text-xs text-amber-300">Work: {work.title_en}</span><button onClick={() => setWorks(works.filter((_, i) => i !== idx))} className="text-red-400 text-xs flex items-center gap-1"><Trash2 size={14} /> Delete</button></div>
+                        <div key={idx} className="p-6 md:p-7 bg-[#1a1a1a] border border-white/10 rounded-sm space-y-5 shadow-lg hover:border-white/20 transition-colors">
+                          <div className="flex justify-between items-center pb-2 border-b border-white/10"><span className="text-sm md:text-base text-amber-200 font-semibold tracking-wide">◆ Work #{idx + 1}: {work.title_en || 'Untitled'}</span><button onClick={() => setWorks(works.filter((_, i) => i !== idx))} className="text-red-400 text-sm flex items-center gap-1.5 hover:text-red-300 hover:bg-red-950/30 px-2.5 py-1.5 rounded-sm transition-colors"><Trash2 size={15} /> Delete</button></div>
                           
                           <div className="grid grid-cols-2 gap-2">
-                            <input type="text" placeholder="Title (EN)" value={work.title_en || ''} onChange={e => { const arr = [...works]; arr[idx].title_en = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
-                            <input type="text" placeholder="标题 (中文)" value={work.title_zh || ''} onChange={e => { const arr = [...works]; arr[idx].title_zh = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
+                            <input type="text" placeholder="Title (EN)" value={work.title_en || ''} onChange={e => { const arr = [...works]; arr[idx].title_en = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
+                            <input type="text" placeholder="标题 (中文)" value={work.title_zh || ''} onChange={e => { const arr = [...works]; arr[idx].title_zh = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
                           </div>
                           
                           {/* 1. 封面图外链 */}
                           <div className="space-y-1.5 pt-1">
-                            <label className="text-[10px] text-stone-400 uppercase flex items-center gap-1">
+                            <label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium flex items-center gap-1">
                               <LinkIcon size={12} className="text-amber-300" /> 1. Cover Image URL (首页卡片封面图外链)
                             </label>
                             <div className="flex items-center gap-3">
@@ -2132,14 +2148,14 @@ export default function App() {
                                 placeholder="https://..." 
                                 value={work.cover_image || ''} 
                                 onChange={e => { const arr = [...works]; arr[idx].cover_image = e.target.value; setWorks(arr); }} 
-                                className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm focus:border-amber-300 focus:outline-none" 
+                                className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm focus:border-amber-300 focus:outline-none" 
                               />
                             </div>
                           </div>
 
                           {/* 2. 高清原画大图外链（用于弹窗与放大镜微距） */}
                           <div className="space-y-1.5 pt-1">
-                            <label className="text-[10px] text-stone-400 uppercase flex items-center gap-1">
+                            <label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium flex items-center gap-1">
                               <LinkIcon size={12} className="text-amber-300" /> 2. HD Image URL (弹窗高清原画与放大镜大图外链)
                             </label>
                             <div className="flex items-center gap-3">
@@ -2151,33 +2167,34 @@ export default function App() {
                                 placeholder="https://..." 
                                 value={work.image || ''} 
                                 onChange={e => { const arr = [...works]; arr[idx].image = e.target.value; setWorks(arr); }} 
-                                className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm focus:border-amber-300 focus:outline-none" 
+                                className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm focus:border-amber-300 focus:outline-none" 
                               />
                             </div>
                           </div>
 
                           <div className="grid grid-cols-3 gap-2 pt-1">
-                            <select value={work.category} onChange={e => { const arr=[...works]; arr[idx].category=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm">
+                            <select value={work.category} onChange={e => { const arr=[...works]; arr[idx].category=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm">
                               <option value="shanshui">Shanshui</option><option value="xiyi">Ink Wash</option><option value="modern">Modern</option>
                             </select>
-                            <input type="text" placeholder="Year" value={work.year} onChange={e => { const arr=[...works]; arr[idx].year=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
-                            <input type="text" placeholder="Size" value={work.size} onChange={e => { const arr=[...works]; arr[idx].size=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
+                            <input type="text" placeholder="Year" value={work.year} onChange={e => { const arr=[...works]; arr[idx].year=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
+                            <input type="text" placeholder="Size" value={work.size} onChange={e => { const arr=[...works]; arr[idx].size=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
                           </div>
                           <div className="grid grid-cols-2 gap-2 pt-1">
-                            <input type="text" placeholder="Material (EN)" value={work.material_en || work.material || ''} onChange={e => { const arr=[...works]; arr[idx].material_en=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
-                            <input type="text" placeholder="材质 (中文) 例如：绢本设色 / 矿物颜料" value={work.material_zh || work.material || ''} onChange={e => { const arr=[...works]; arr[idx].material_zh=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm" />
+                            <input type="text" placeholder="Material (EN)" value={work.material_en || work.material || ''} onChange={e => { const arr=[...works]; arr[idx].material_en=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
+                            <input type="text" placeholder="材质 (中文) 例如：绢本设色 / 矿物颜料" value={work.material_zh || work.material || ''} onChange={e => { const arr=[...works]; arr[idx].material_zh=e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm" />
                           </div>
                           <div className="grid grid-cols-2 gap-2">
-                            <textarea rows={2} placeholder="Description (EN)" value={work.description_en || ''} onChange={e => { const arr=[...works]; arr[idx].description_en = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
-                            <textarea rows={2} placeholder="详细介绍 (中文)" value={work.description_zh || ''} onChange={e => { const arr=[...works]; arr[idx].description_zh = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
+                            <textarea rows={2} placeholder="Description (EN)" value={work.description_en || ''} onChange={e => { const arr=[...works]; arr[idx].description_en = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm resize-none" />
+                            <textarea rows={2} placeholder="详细介绍 (中文)" value={work.description_zh || ''} onChange={e => { const arr=[...works]; arr[idx].description_zh = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm resize-none" />
                           </div>
 
-                          <details
-                            className={`border rounded-sm ${workCmsGoodsOpen[idx] ? 'border-amber-400/40' : 'border-white/10'} bg-black/40 overflow-hidden`}
-                            open={!!workCmsGoodsOpen[idx]}
-                            onToggle={(e) => { setWorkCmsGoodsOpen(prev => ({ ...prev, [idx]: e.currentTarget.open })); }}
-                          >
-                            <summary className="cursor-pointer select-none px-3 py-2 text-[11px] tracking-widest flex items-center justify-between gap-2 hover:bg-white/5 transition-colors list-none">
+                          <div className={`border rounded-sm ${workCmsGoodsOpen[idx] ? 'border-amber-400/40' : 'border-white/10'} bg-black/40 overflow-hidden`}>
+                            <button
+                              type="button"
+                              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setWorkCmsGoodsOpen(prev => ({ ...prev, [idx]: !prev[idx] })); }}
+                              aria-expanded={!!workCmsGoodsOpen[idx]}
+                              className="w-full cursor-pointer select-none px-3 py-2 text-[11px] tracking-widest flex items-center justify-between gap-2 hover:bg-white/5 transition-colors list-none"
+                            >
                               <span className="inline-flex items-center gap-1.5 text-amber-200">
                                 <ShoppingBag size={13} />
                                 🛒 {lang === 'en' ? 'Commerce Fields · (Pricing / Shipping / Framing / Inventory / SEO slug)' : '商品字段 · （价格/运费/装裱/库存状态/SEO 链接 slug）'}
@@ -2185,16 +2202,17 @@ export default function App() {
                               <span className="text-stone-500 text-[10px]">
                                 {workCmsGoodsOpen[idx] ? '▲' : '▼'}
                               </span>
-                            </summary>
+                            </button>
+                            {!!workCmsGoodsOpen[idx] && (
                             <div className="p-3 md:p-4 border-t border-white/10 space-y-4">
                               <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
                                 <div className="space-y-1 sm:col-span-2">
-                                  <div className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-stone-400">
+                                  <div className="flex items-center gap-1 text-xs tracking-[0.15em] uppercase text-stone-300 font-medium">
                                     <DollarSign size={11} className="text-amber-300" /> PRICE · 售价
                                   </div>
                                   <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                      <label className="text-[10px] text-stone-500 block mb-1">USD ($)</label>
+                                      <label className="text-xs text-stone-400 block mb-1.5 font-medium">USD ($)</label>
                                       <input
                                         type="number"
                                         min="0"
@@ -2207,11 +2225,11 @@ export default function App() {
                                           arr[idx].price_usd = val === '' ? null : (Number(val) || 0);
                                           setWorks(arr);
                                         }}
-                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                        className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                       />
                                     </div>
                                     <div>
-                                      <label className="text-[10px] text-stone-500 block mb-1">CNY (¥)</label>
+                                      <label className="text-xs text-stone-400 block mb-1.5 font-medium">CNY (¥)</label>
                                       <input
                                         type="number"
                                         min="0"
@@ -2224,19 +2242,19 @@ export default function App() {
                                           arr[idx].price_cny = val === '' ? null : (Number(val) || 0);
                                           setWorks(arr);
                                         }}
-                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                        className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                       />
                                     </div>
                                   </div>
                                 </div>
 
                                 <div className="space-y-1 sm:col-span-2">
-                                  <div className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-stone-400">
+                                  <div className="flex items-center gap-1 text-xs tracking-[0.15em] uppercase text-stone-300 font-medium">
                                     <Truck size={11} className="text-amber-300" /> SHIPPING · 运费
                                   </div>
                                   <div className="grid grid-cols-2 gap-2">
                                     <div>
-                                      <label className="text-[10px] text-stone-500 block mb-1">Fee USD</label>
+                                      <label className="text-xs text-stone-400 block mb-1.5 font-medium">Fee USD</label>
                                       <input
                                         type="number"
                                         min="0"
@@ -2249,11 +2267,11 @@ export default function App() {
                                           arr[idx].shipping_fee_usd = val === '' ? 0 : (Number(val) || 0);
                                           setWorks(arr);
                                         }}
-                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                        className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                       />
                                     </div>
                                     <div>
-                                      <label className="text-[10px] text-stone-500 block mb-1">运费 人民币</label>
+                                      <label className="text-xs text-stone-400 block mb-1.5 font-medium">运费 人民币</label>
                                       <input
                                         type="number"
                                         min="0"
@@ -2266,21 +2284,21 @@ export default function App() {
                                           arr[idx].shipping_fee_cny = val === '' ? 0 : (Number(val) || 0);
                                           setWorks(arr);
                                         }}
-                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                        className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                       />
                                     </div>
                                   </div>
                                 </div>
 
                                 <div className="space-y-1">
-                                  <div className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-stone-400">
+                                  <div className="flex items-center gap-1 text-xs tracking-[0.15em] uppercase text-stone-300 font-medium">
                                     <Tag size={11} className="text-amber-300" /> INVENTORY · 状态
                                   </div>
-                                  <label className="text-[10px] text-stone-500 block mb-1">{lang === 'en' ? 'Availability' : '库存 / 展示状态'}</label>
+                                  <label className="text-xs text-stone-400 block mb-1.5 font-medium">{lang === 'en' ? 'Availability' : '库存 / 展示状态'}</label>
                                   <select
                                     value={work.availability || 'available'}
                                     onChange={e => { const arr=[...works]; arr[idx].availability = e.target.value; setWorks(arr); }}
-                                    className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                    className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                   >
                                     {AVAILABILITY_OPTIONS.map(opt => (
                                       <option key={opt.value} value={opt.value}>
@@ -2296,7 +2314,7 @@ export default function App() {
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                  <label className="text-[10px] tracking-widest uppercase text-stone-400 flex items-center gap-1">
+                                  <label className="text-xs tracking-[0.15em] uppercase text-stone-300 font-medium flex items-center gap-1">
                                     <Package size={11} className="text-amber-300" /> {lang === 'en' ? 'Shipping Methods · 发货方式（双语）' : '发货方式 Shipping Methods（双语）'}
                                   </label>
                                   <div className="grid grid-cols-2 gap-2">
@@ -2305,20 +2323,20 @@ export default function App() {
                                       placeholder="e.g. DHL International, 5-10 days"
                                       value={work.shipping_methods_en || ''}
                                       onChange={e => { const arr=[...works]; arr[idx].shipping_methods_en = e.target.value; setWorks(arr); }}
-                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                     />
                                     <input
                                       type="text"
                                       placeholder="例如：顺丰 / DHL 国际 5-10 工作日"
                                       value={work.shipping_methods_zh || ''}
                                       onChange={e => { const arr=[...works]; arr[idx].shipping_methods_zh = e.target.value; setWorks(arr); }}
-                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                     />
                                   </div>
                                 </div>
 
                                 <div className="space-y-1">
-                                  <label className="text-[10px] tracking-widest uppercase text-stone-400 flex items-center gap-1">
+                                  <label className="text-xs tracking-[0.15em] uppercase text-stone-300 font-medium flex items-center gap-1">
                                     <Shuffle size={11} className="text-amber-300" /> {lang === 'en' ? 'Framing · 装裱方式（双语）' : '装裱方式 Framing（双语）'}
                                   </label>
                                   <div className="grid grid-cols-2 gap-2">
@@ -2327,21 +2345,21 @@ export default function App() {
                                       placeholder="e.g. Unframed · Rolled (default)"
                                       value={work.framing_en || ''}
                                       onChange={e => { const arr=[...works]; arr[idx].framing_en = e.target.value; setWorks(arr); }}
-                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                     />
                                     <input
                                       type="text"
                                       placeholder="例如：未装裱 · 卷筒（默认）/ 可定制实木框"
                                       value={work.framing_zh || ''}
                                       onChange={e => { const arr=[...works]; arr[idx].framing_zh = e.target.value; setWorks(arr); }}
-                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      className="bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm"
                                     />
                                   </div>
                                 </div>
                               </div>
 
                               <div className="space-y-1.5">
-                                <label className="text-[10px] tracking-widest uppercase text-stone-400 flex items-center gap-1">
+                                <label className="text-xs tracking-[0.15em] uppercase text-stone-300 font-medium flex items-center gap-1">
                                   <Search size={11} className="text-amber-300" /> {lang === 'en' ? 'Detail Images · 细节图 URL（每行 1 条）' : '细节图 Detail Images URL（每行 1 条）'}
                                 </label>
                                 <textarea
@@ -2356,7 +2374,7 @@ export default function App() {
                                     arr[idx].detail_images = urls;
                                     setWorks(arr);
                                   }}
-                                  className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-y font-mono leading-relaxed"
+                                  className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm resize-y font-mono leading-relaxed"
                                 />
                                 <div className="flex items-center justify-between text-[10px] text-stone-500 tracking-wider">
                                   <span>{lang === 'en' ? 'Images (after main):' : '细节图数量：'} {(Array.isArray(work.detail_images) ? work.detail_images.filter(Boolean).length : 0)}</span>
@@ -2378,7 +2396,7 @@ export default function App() {
 
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                 <div className="space-y-1">
-                                  <label className="text-[10px] tracking-widest uppercase text-stone-400">
+                                  <label className="text-xs tracking-[0.15em] uppercase text-stone-300 font-medium">
                                     {lang === 'en' ? 'SEO Slug · EN URL (#/work/xxx)' : 'SEO 链接 · 英文 Slug（#/work/xxx）'}
                                   </label>
                                   <div className="flex gap-2">
@@ -2387,7 +2405,7 @@ export default function App() {
                                       placeholder="e.g. mountain-spirit-no3"
                                       value={work.seo_slug_en || ''}
                                       onChange={e => { const arr=[...works]; arr[idx].seo_slug_en = e.target.value; setWorks(arr); }}
-                                      className="flex-1 bg-black border border-white/20 p-2 text-xs text-white rounded-sm font-mono"
+                                      className="flex-1 bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm font-mono"
                                     />
                                     <button
                                       type="button"
@@ -2396,14 +2414,14 @@ export default function App() {
                                         arr[idx].seo_slug_en = slugifyForWork(arr[idx].title_en || arr[idx].title_zh || '');
                                         setWorks(arr);
                                       }}
-                                      className="shrink-0 px-2 py-1 text-[10px] rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-950/40 tracking-wider whitespace-nowrap"
+                                      className="shrink-0 px-3 py-2 text-xs rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-950/40 tracking-wide whitespace-nowrap font-medium"
                                     >
                                       {lang === 'en' ? 'Auto from title' : '按标题自动生成'}
                                     </button>
                                   </div>
                                 </div>
                                 <div className="space-y-1">
-                                  <label className="text-[10px] tracking-widest uppercase text-stone-400">
+                                  <label className="text-xs tracking-[0.15em] uppercase text-stone-300 font-medium">
                                     {lang === 'en' ? 'SEO Slug · ZH (optional)' : 'SEO 链接 · 中文 Slug（可选）'}
                                   </label>
                                   <div className="flex gap-2">
@@ -2412,7 +2430,7 @@ export default function App() {
                                       placeholder={lang === 'en' ? 'Optional: Chinese-friendly slug' : '可选：中文友好 URL（留空则用 EN/标题生成）'}
                                       value={work.seo_slug_zh || ''}
                                       onChange={e => { const arr=[...works]; arr[idx].seo_slug_zh = e.target.value; setWorks(arr); }}
-                                      className="flex-1 bg-black border border-white/20 p-2 text-xs text-white rounded-sm font-mono"
+                                      className="flex-1 bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm font-mono"
                                     />
                                     <button
                                       type="button"
@@ -2421,7 +2439,7 @@ export default function App() {
                                         arr[idx].seo_slug_zh = slugifyForWork(arr[idx].title_zh || arr[idx].title_en || '');
                                         setWorks(arr);
                                       }}
-                                      className="shrink-0 px-2 py-1 text-[10px] rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-950/40 tracking-wider whitespace-nowrap"
+                                      className="shrink-0 px-3 py-2 text-xs rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-950/40 tracking-wide whitespace-nowrap font-medium"
                                     >
                                       {lang === 'en' ? 'Auto' : '自动生成'}
                                     </button>
@@ -2429,7 +2447,8 @@ export default function App() {
                                 </div>
                               </div>
                             </div>
-                          </details>
+                            )}
+                          </div>
                         </div>
                       ))}
                     </div>
@@ -2438,12 +2457,12 @@ export default function App() {
                   {/* 社交媒体管理 */}
                   {adminSection === 'socials' && (
                     <div className="space-y-4 p-4 bg-[#1a1a1a] border border-white/10 rounded-sm">
-                      <div><label className="text-[10px] text-stone-400 uppercase">Email</label><input type="text" value={socials.email || ''} onChange={e => setSocials({...socials, email: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
-                      <div><label className="text-[10px] text-stone-400 uppercase">Phone</label><input type="text" value={socials.phone || ''} onChange={e => setSocials({...socials, phone: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
-                      <div><label className="text-[10px] text-stone-400 uppercase">Instagram</label><input type="text" value={socials.instagram || ''} onChange={e => setSocials({...socials, instagram: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
-                      <div><label className="text-[10px] text-stone-400 uppercase">Facebook</label><input type="text" value={socials.facebook || ''} onChange={e => setSocials({...socials, facebook: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
-                      <div><label className="text-[10px] text-stone-400 uppercase">WhatsApp</label><input type="text" value={socials.whatsapp || ''} onChange={e => setSocials({...socials, whatsapp: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
-                      <div><label className="text-[10px] text-stone-400 uppercase">TikTok</label><input type="text" value={socials.tiktok || ''} onChange={e => setSocials({...socials, tiktok: e.target.value})} className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm mt-1" /></div>
+                      <div><label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium">Email</label><input type="text" value={socials.email || ''} onChange={e => setSocials({...socials, email: e.target.value})} className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm mt-1" /></div>
+                      <div><label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium">Phone</label><input type="text" value={socials.phone || ''} onChange={e => setSocials({...socials, phone: e.target.value})} className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm mt-1" /></div>
+                      <div><label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium">Instagram</label><input type="text" value={socials.instagram || ''} onChange={e => setSocials({...socials, instagram: e.target.value})} className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm mt-1" /></div>
+                      <div><label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium">Facebook</label><input type="text" value={socials.facebook || ''} onChange={e => setSocials({...socials, facebook: e.target.value})} className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm mt-1" /></div>
+                      <div><label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium">WhatsApp</label><input type="text" value={socials.whatsapp || ''} onChange={e => setSocials({...socials, whatsapp: e.target.value})} className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm mt-1" /></div>
+                      <div><label className="text-xs text-stone-300 uppercase tracking-[0.1em] font-medium">TikTok</label><input type="text" value={socials.tiktok || ''} onChange={e => setSocials({...socials, tiktok: e.target.value})} className="w-full bg-black border border-white/20 p-2.5 text-sm text-white leading-relaxed rounded-sm mt-1" /></div>
                     </div>
                   )}
 
@@ -2491,11 +2510,11 @@ export default function App() {
                               <article key={m.id} className={`p-4 md:p-5 bg-[#171717] border rounded-sm space-y-4 ${m.status === 'new' ? 'border-amber-300/20' : 'border-white/10'}`}>
                                 <header className="grid grid-cols-1 md:grid-cols-12 gap-3 items-start">
                                   <div className="md:col-span-3 space-y-1">
-                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500">{currentT.msgInquiryTitle}</div>
+                                    <div className="text-xs tracking-[0.15em] uppercase text-stone-400 font-medium">{currentT.msgInquiryTitle}</div>
                                     <div className="text-sm text-stone-100">{inquiryLabel || '—'}</div>
                                   </div>
                                   <div className="md:col-span-4 space-y-1">
-                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500">From · 来源</div>
+                                    <div className="text-xs tracking-[0.15em] uppercase text-stone-400 font-medium">From · 来源</div>
                                     <div className="text-sm text-stone-100">
                                       <span className="font-medium">{m.name || '—'}</span>
                                       <span className="mx-2 text-stone-500/70">·</span>
@@ -2506,13 +2525,13 @@ export default function App() {
                                     </div>
                                   </div>
                                   <div className="md:col-span-3 space-y-1">
-                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500">{currentT.msgTimeTitle}</div>
+                                    <div className="text-xs tracking-[0.15em] uppercase text-stone-400 font-medium">{currentT.msgTimeTitle}</div>
                                     <div className="text-sm text-stone-200 tabular-nums">
                                       {m.created_at ? new Date(m.created_at).toLocaleString() : '—'}
                                     </div>
                                   </div>
                                   <div className="md:col-span-2 space-y-1 md:text-right">
-                                    <div className="text-[10px] tracking-[0.2em] uppercase text-stone-500 md:text-right">{currentT.msgStatusTitle}</div>
+                                    <div className="text-xs tracking-[0.15em] uppercase text-stone-400 font-medium md:text-right">{currentT.msgStatusTitle}</div>
                                     <div className={`inline-flex md:ml-auto px-2.5 py-1 rounded-full border text-[11px] tracking-widest ${statusTone}`}>
                                       {statusLabel}
                                     </div>
@@ -2562,9 +2581,9 @@ export default function App() {
                   )}
                 </div>
 
-                <div className="p-6 border-t border-white/10 bg-[#161616]">
-                  <button onClick={handleSaveToCloud} disabled={loading} className="w-full py-3 bg-amber-300 text-black font-medium text-xs tracking-widest rounded-sm hover:bg-white transition-colors flex items-center justify-center gap-2 shadow-lg">
-                    <Save size={16} /> {loading ? 'Syncing...' : currentT.saveBtn}
+                <div className="p-6 md:p-8 border-t border-white/10 bg-[#161616]">
+                  <button onClick={handleSaveToCloud} disabled={loading} className="w-full py-4 bg-amber-300 text-black font-semibold text-sm tracking-[0.18em] rounded-sm hover:bg-white transition-colors flex items-center justify-center gap-2 shadow-xl active:scale-[0.99]">
+                    <Save size={18} /> {loading ? 'Syncing to Supabase…' : currentT.saveBtn}
                   </button>
                 </div>
               </>
