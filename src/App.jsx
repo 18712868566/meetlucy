@@ -716,7 +716,9 @@ export default function App() {
     setWorkDescFold(true);
     setWorkProductFold(false);
     window.location.hash = '#/work/' + encodeURIComponent(slug);
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 30);
   }
 
   function closeWorkDetail() {
@@ -724,6 +726,9 @@ export default function App() {
       history.replaceState(null, document.title, window.location.pathname + window.location.search + '#works');
     }
     setWorkLightboxOpen(false);
+    setTimeout(() => {
+      document.getElementById('works')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 30);
   }
 
   const selectedWork = useMemo(() => {
@@ -751,8 +756,15 @@ export default function App() {
 
   useEffect(() => {
     function onHashChange() {
-      setHashRoute(parseHash(window.location.hash));
-      window.scrollTo({ top: 0, behavior: 'auto' });
+      const next = parseHash(window.location.hash);
+      setHashRoute(next);
+      requestAnimationFrame(() => {
+        if (next.view === 'work') {
+          window.scrollTo({ top: 0, behavior: 'auto' });
+        } else if (next.view === 'home' && next.workId === null && window.location.hash === '#works') {
+          document.getElementById('works')?.scrollIntoView({ behavior: 'auto', block: 'start' });
+        }
+      });
     }
     window.addEventListener('hashchange', onHashChange);
     return () => window.removeEventListener('hashchange', onHashChange);
@@ -1166,7 +1178,8 @@ export default function App() {
       )}
 
       {/* HERO 首屏 */}
-      <section id="hero" className="relative h-screen flex items-center justify-center overflow-hidden">
+      {!selectedWork && (
+        <section id="hero" className="relative h-screen flex items-center justify-center overflow-hidden">
         <div className="absolute inset-0 z-0 overflow-hidden">
           <video ref={heroVideoRef} autoPlay loop muted playsInline preload="auto" className="hero-bg-video w-full h-full object-cover opacity-8 mix-blend-luminosity">
             <source src="/shh.mp4" type="video/mp4" />
@@ -1192,9 +1205,11 @@ export default function App() {
           </div>
         </div>
       </section>
+      )}
 
       {/* 个人经历 (ABOUT) */}
-      <section id="about" className="reveal-section relative py-24 md:py-48 px-6 md:px-20 bg-[#0d0d0d] overflow-hidden">
+      {!selectedWork && (
+        <section id="about" className="reveal-section relative py-24 md:py-48 px-6 md:px-20 bg-[#0d0d0d] overflow-hidden">
         <div className="relative z-10 max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-10 md:gap-16 items-center">
           <div className="lg:col-span-5 relative group"
                     onMouseEnter={() => setAboutHover(true)}
@@ -1338,10 +1353,11 @@ export default function App() {
           </div>
         </div>
       </section>
+      )}
 
       {/* 精选作品 (WORKS) */}
-      <section id="works" className={`reveal-section relative px-6 md:px-20 bg-[#0a0a0a] ${selectedWork ? 'pt-24 pb-12 md:pt-36 md:pb-16' : 'py-24 md:py-48'}`}>
-        {!selectedWork && (
+      {!selectedWork && (
+        <section id="works" className="reveal-section relative py-24 md:py-48 px-6 md:px-20 bg-[#0a0a0a]">
           <div className="max-w-7xl mx-auto space-y-12 relative z-10">
             <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/20 pb-6">
               <div>
@@ -1404,54 +1420,57 @@ export default function App() {
               })}
             </div>
           </div>
-        )}
+        </section>
+      )}
 
-        {selectedWork && (() => {
-          const work = selectedWork;
-          const wTitle = lang === 'en' ? (work.title_en || '') : (work.title_zh || '');
-          const wDesc = lang === 'en' ? (work.description_en || '') : (work.description_zh || '');
-          const wCat = lang === 'en' ? (work.category_label_en || work.category || '') : (work.category_label_zh || work.category || '');
-          const wMaterial = lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '');
-          const wShipMethods = lang === 'en' ? (work.shipping_methods_en || '') : (work.shipping_methods_zh || '');
-          const wFraming = lang === 'en' ? (work.framing_en || '') : (work.framing_zh || '');
-          const avail = String(work.availability || 'available');
-          const availLabel =
-            avail === 'available'  ? currentT.workAvailabilityAvailable :
-            avail === 'reserved'   ? currentT.workAvailabilityReserved :
-            avail === 'sold'       ? currentT.workAvailabilitySold :
-            avail === 'exhibition' ? currentT.workAvailabilityExhibition : '';
-          const availBadge =
-            avail === 'sold' ? 'bg-rose-950/80 text-rose-200 border-rose-500/40' :
-            avail === 'exhibition' ? 'bg-indigo-950/80 text-indigo-200 border-indigo-500/40' :
-            avail === 'reserved' ? 'bg-amber-950/80 text-amber-200 border-amber-500/40' :
-            'bg-emerald-950/80 text-emerald-200 border-emerald-500/40';
-          const priceUsd = Number(work.price_usd || 0);
-          const priceCny = Number(work.price_cny || 0);
-          const hasAnyPrice = priceUsd > 0 || priceCny > 0;
-          const primaryCurrency = workCurrency;
-          const primaryPriceAmt = primaryCurrency === 'USD' ? priceUsd : priceCny;
-          const altPriceAmt = primaryCurrency === 'USD' ? priceCny : priceUsd;
-          const primaryPriceStr = primaryPriceAmt > 0 ? currencyFormat(primaryPriceAmt, primaryCurrency) : null;
-          const altPriceStr = altPriceAmt > 0 ? currencyFormat(altPriceAmt, primaryCurrency === 'USD' ? 'CNY' : 'USD') : null;
-          const shipFeeUsd = Number(work.shipping_fee_usd || 0);
-          const shipFeeCny = Number(work.shipping_fee_cny || 0);
-          const shipFeeAmt = primaryCurrency === 'USD' ? shipFeeUsd : shipFeeCny;
-          const shipFeeStr = shipFeeAmt > 0 ? currencyFormat(shipFeeAmt, primaryCurrency) : null;
-          const hasShipFree = !shipFeeStr && (!shipFeeUsd && !shipFeeCny);
+      {/* 作品独立详情二级页（方案2：全屏独占，URL hash #/work/:slug） */}
+      {selectedWork && (() => {
+        const work = selectedWork;
+        const wTitle = lang === 'en' ? (work.title_en || '') : (work.title_zh || '');
+        const wDesc = lang === 'en' ? (work.description_en || '') : (work.description_zh || '');
+        const wCat = lang === 'en' ? (work.category_label_en || work.category || '') : (work.category_label_zh || work.category || '');
+        const wMaterial = lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '');
+        const wShipMethods = lang === 'en' ? (work.shipping_methods_en || '') : (work.shipping_methods_zh || '');
+        const wFraming = lang === 'en' ? (work.framing_en || '') : (work.framing_zh || '');
+        const avail = String(work.availability || 'available');
+        const availLabel =
+          avail === 'available'  ? currentT.workAvailabilityAvailable :
+          avail === 'reserved'   ? currentT.workAvailabilityReserved :
+          avail === 'sold'       ? currentT.workAvailabilitySold :
+          avail === 'exhibition' ? currentT.workAvailabilityExhibition : '';
+        const availBadge =
+          avail === 'sold' ? 'bg-rose-950/80 text-rose-200 border-rose-500/40' :
+          avail === 'exhibition' ? 'bg-indigo-950/80 text-indigo-200 border-indigo-500/40' :
+          avail === 'reserved' ? 'bg-amber-950/80 text-amber-200 border-amber-500/40' :
+          'bg-emerald-950/80 text-emerald-200 border-emerald-500/40';
+        const priceUsd = Number(work.price_usd || 0);
+        const priceCny = Number(work.price_cny || 0);
+        const hasAnyPrice = priceUsd > 0 || priceCny > 0;
+        const primaryCurrency = workCurrency;
+        const primaryPriceAmt = primaryCurrency === 'USD' ? priceUsd : priceCny;
+        const altPriceAmt = primaryCurrency === 'USD' ? priceCny : priceUsd;
+        const primaryPriceStr = primaryPriceAmt > 0 ? currencyFormat(primaryPriceAmt, primaryCurrency) : null;
+        const altPriceStr = altPriceAmt > 0 ? currencyFormat(altPriceAmt, primaryCurrency === 'USD' ? 'CNY' : 'USD') : null;
+        const shipFeeUsd = Number(work.shipping_fee_usd || 0);
+        const shipFeeCny = Number(work.shipping_fee_cny || 0);
+        const shipFeeAmt = primaryCurrency === 'USD' ? shipFeeUsd : shipFeeCny;
+        const shipFeeStr = shipFeeAmt > 0 ? currencyFormat(shipFeeAmt, primaryCurrency) : null;
+        const hasShipFree = !shipFeeStr && (!shipFeeUsd && !shipFeeCny);
 
-          const ctaLabel =
-            avail === 'exhibition' ? currentT.workCtaExhibition :
-            avail === 'sold' ? currentT.workCtaCustomOrder :
-            avail === 'reserved' ? currentT.workCtaReserveNext :
-            hasAnyPrice ? currentT.workCtaInquire : currentT.workCtaInquire;
+        const ctaLabel =
+          avail === 'exhibition' ? currentT.workCtaExhibition :
+          avail === 'sold' ? currentT.workCtaCustomOrder :
+          avail === 'reserved' ? currentT.workCtaReserveNext :
+          hasAnyPrice ? currentT.workCtaInquire : currentT.workCtaInquire;
 
-          const gallery = workGallery;
-          const totalImages = gallery.length;
-          const currentImage = gallery[workGalleryImgIdx] || gallery[0] || '';
+        const gallery = workGallery;
+        const totalImages = gallery.length;
+        const currentImage = gallery[workGalleryImgIdx] || gallery[0] || '';
 
-          return (
+        return (
+          <section id="work-detail" className="relative pt-28 pb-28 md:pt-36 md:pb-32 px-6 md:px-20 bg-[#0a0a0a] min-h-screen">
             <div className="max-w-7xl mx-auto relative z-10">
-              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 md:mb-8">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 md:mb-10">
                 <button onClick={closeWorkDetail} className="inline-flex items-center gap-2 text-stone-300 hover:text-amber-300 transition-colors text-sm md:text-base tracking-wider">
                   <ChevronLeft size={18} />
                   {currentT.workBackBtn}
@@ -1767,12 +1786,13 @@ export default function App() {
                 </div>
               )}
             </div>
-          );
-        })()}
-      </section>
+          </section>
+        );
+      })()}
 
       {/* 美育愿景 (VISION) */}
-      <section id="vision" className="reveal-section relative py-24 md:py-36 px-6 md:px-20 bg-[#0d0d0d] border-t border-white/10">
+      {!selectedWork && (
+        <section id="vision" className="reveal-section relative py-24 md:py-36 px-6 md:px-20 bg-[#0d0d0d] border-t border-white/10">
         <div className="max-w-6xl mx-auto space-y-16 relative z-10">
           <div className="text-center space-y-6">
             <span className="text-amber-300 tracking-[0.4em] text-xs uppercase block font-medium">{currentT.visionTag}</span>
@@ -1840,9 +1860,11 @@ export default function App() {
           </figure>
         </div>
       </section>
+      )}
 
       {/* 联系画廊 (CONTACT) */}
-      <section id="contact" className="reveal-section min-h-screen py-24 px-6 md:px-20 bg-[#0a0a0a] flex flex-col justify-center border-t border-white/10 relative">
+      {!selectedWork && (
+        <section id="contact" className="reveal-section min-h-screen py-24 px-6 md:px-20 bg-[#0a0a0a] flex flex-col justify-center border-t border-white/10 relative">
         <div className="max-w-7xl mx-auto w-full grid grid-cols-1 lg:grid-cols-12 gap-12 relative z-10">
           <div className="lg:col-span-5 space-y-6">
             <span className="text-amber-300 tracking-[0.4em] text-xs uppercase font-medium">{currentT.contactTag}</span>
@@ -1936,6 +1958,7 @@ export default function App() {
           </div>
         </div>
       </section>
+      )}
 
       {/* 页脚 */}
       <footer className="py-8 px-6 bg-[#060606] border-t border-white/10 text-center text-xs text-stone-500 flex flex-col md:flex-row justify-between items-center max-w-7xl mx-auto">
