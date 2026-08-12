@@ -1,5 +1,5 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, ZoomIn, Link as LinkIcon, Leaf, Feather, BookOpen, Compass, Sparkles, Palette, MessageCircleHeart, Inbox, CheckCircle, MessageSquare, AlertTriangle } from 'lucide-react';
+import React, { useRef, useState, useEffect, useMemo } from 'react';
+import { Menu, X, ArrowUpRight, Mail, Phone, Globe, Settings, Plus, Trash2, Save, Lock, LogOut, ZoomIn, Link as LinkIcon, Leaf, Feather, BookOpen, Compass, Sparkles, Palette, MessageCircleHeart, Inbox, CheckCircle, MessageSquare, AlertTriangle, Copy, ChevronLeft, Shuffle, Truck, Package, Tag, DollarSign, ChevronDown, ChevronUp, Search, ShoppingBag } from 'lucide-react';
 import { createClient } from '@supabase/supabase-js';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -174,7 +174,36 @@ const t = {
     msgTimeTitle: "Time",
     msgStatusTitle: "Status",
     msgActionsTitle: "Actions",
-    detailBtn: "High-Res Details",
+    detailBtn: "Open Details",
+    workBackBtn: "Back to Gallery",
+    workViewOriginal: "View Original",
+    workAvailabilityAvailable: "Available",
+    workAvailabilityReserved: "Reserved",
+    workAvailabilitySold: "Sold",
+    workAvailabilityExhibition: "Exhibition · Not for Sale",
+    workPriceOnRequest: "Price on Request",
+    workShippingFee: "Shipping",
+    workShippingFree: "Free Shipping",
+    workShippingMethods: "Shipping Methods",
+    workShippingMethodsDefault: "We will confirm the exact shipping details with you after consultation.",
+    workFraming: "Framing",
+    workCurrencyToggle: "Currency",
+    workTabDesc: "Description",
+    workTabDescZh: "中文介绍",
+    workTabDescEn: "English",
+    workCtaInquire: "Inquire This Work",
+    workCtaReserveNext: "Request Similar Work",
+    workCtaCustomOrder: "Commission Similar",
+    workCtaExhibition: "Exhibition Inquiry",
+    workCtaCopyInfo: "Copy Work Info",
+    workCopySuccess: "Work info copied to clipboard.",
+    workImageIndex: "Image {idx} / {total}",
+    workDetailTitle: "Artwork Details",
+    workProductTitle: "Collection & Shipping",
+    workDescMore: "Read More",
+    workDescLess: "Collapse",
+    workNotFound: "Artwork not found.",
+    workNotFoundBack: "Return to Gallery",
     contactTag: "Get In Touch",
     contactTitle1: "Looking Forward to",
     contactTitle2: "Connecting With You",
@@ -254,7 +283,36 @@ const t = {
     msgTimeTitle: "提交时间",
     msgStatusTitle: "处理状态",
     msgActionsTitle: "操作",
-    detailBtn: "高精度原画细节",
+    detailBtn: "查看作品详情",
+    workBackBtn: "返回作品集",
+    workViewOriginal: "查看原图",
+    workAvailabilityAvailable: "可收藏 · Available",
+    workAvailabilityReserved: "已预订 · Reserved",
+    workAvailabilitySold: "已售 · Sold",
+    workAvailabilityExhibition: "展陈中 · Not for Sale",
+    workPriceOnRequest: "价格私询 · Price on Request",
+    workShippingFee: "运费",
+    workShippingFree: "包邮",
+    workShippingMethods: "发货方式",
+    workShippingMethodsDefault: "具体发货方式及运费，画廊将在咨询后与您确认。",
+    workFraming: "装裱方式",
+    workCurrencyToggle: "币种",
+    workTabDesc: "作品介绍",
+    workTabDescZh: "中文介绍",
+    workTabDescEn: "English",
+    workCtaInquire: "咨询此作品",
+    workCtaReserveNext: "预约同系列下一幅",
+    workCtaCustomOrder: "预约同风格定制",
+    workCtaExhibition: "展陈合作咨询",
+    workCtaCopyInfo: "复制作品信息",
+    workCopySuccess: "作品信息已复制到剪贴板。",
+    workImageIndex: "第 {idx} / {total} 张",
+    workDetailTitle: "作品详情",
+    workProductTitle: "收藏与配送",
+    workDescMore: "展开全部",
+    workDescLess: "收起内容",
+    workNotFound: "未找到该作品。",
+    workNotFoundBack: "返回作品集",
     contactTag: "Get In Touch",
     contactTitle1: "期许与您",
     contactTitle2: "共论丹青意境",
@@ -353,6 +411,99 @@ const SITE_TITLE_DEFAULT =
 const SITE_DESC_DEFAULT =
   'Lucy 坊（Meet Lucy）当代水墨山水艺术家个人作品集。绢本设色、矿物颜料，师承宋元骨法与明清意趣，外师造化中得心源，作品系列、艺术履历、创作自述、美育愿景与收藏联络一站呈现。';
 
+const AVAILABILITY_OPTIONS = [
+  { value: 'available',  en: 'Available', zh: '可收藏' },
+  { value: 'reserved',   en: 'Reserved',  zh: '已预订' },
+  { value: 'sold',       en: 'Sold',      zh: '已售' },
+  { value: 'exhibition', en: 'Exhibition Not for Sale', zh: '展陈中不售' },
+];
+
+function slugifyForWork(text) {
+  if (!text) return '';
+  const raw = String(text).toLowerCase().trim()
+    .replace(/[《》【】（）()「」"'\.,，。;；:：!\?？·•]/g, ' ')
+    .replace(/[—–\-]+/g, '-')
+    .replace(/\s+/g, '-')
+    .replace(/^-+|-+$/g, '');
+  return raw;
+}
+
+function currencyFormat(amount, currency) {
+  if (amount === null || amount === undefined || amount === '') return null;
+  const num = Number(amount);
+  if (!isFinite(num)) return null;
+  try {
+    return new Intl.NumberFormat(currency === 'CNY' ? 'zh-CN' : 'en-US', {
+      style: 'currency',
+      currency: currency || 'USD',
+      maximumFractionDigits: 0,
+    }).format(num);
+  } catch {
+    return `${currency || 'USD'} ${num.toLocaleString()}`;
+  }
+}
+
+function ensureJsonLdProduct() {
+  const ID = 'structured-data-product';
+  let el = document.getElementById(ID);
+  if (!el) {
+    el = document.createElement('script');
+    el.type = 'application/ld+json';
+    el.id = ID;
+    document.head.appendChild(el);
+  }
+  return el;
+}
+
+function setJsonLdProduct(work, lang) {
+  const el = ensureJsonLdProduct();
+  if (!work) {
+    el.textContent = '';
+    return;
+  }
+  const siteName = lang === 'en' ? 'Meet Lucy Studio' : 'Lucy 坊';
+  const name = (work[lang === 'en' ? 'title_en' : 'title_zh']) || '';
+  const descRaw = work[lang === 'en' ? 'description_en' : 'description_zh'] || '';
+  const desc = String(descRaw || '').slice(0, 500);
+  const image = work.cover_image || work.image || '';
+  const avail = String(work.availability || 'available');
+  const ogAvail = avail === 'available'  ? 'https://schema.org/InStock'
+               : avail === 'reserved'   ? 'https://schema.org/PreOrder'
+               : avail === 'sold'       ? 'https://schema.org/SoldOut'
+               : avail === 'exhibition' ? 'https://schema.org/OutOfStock'
+               : 'https://schema.org/InStock';
+  let offer = null;
+  const priceUsd = Number(work.price_usd || 0);
+  const priceCny = Number(work.price_cny || 0);
+  if (priceUsd > 0 || priceCny > 0) {
+    offer = {
+      "@type": "Offer",
+      "url": window.location.href,
+      "priceCurrency": priceUsd > 0 ? 'USD' : 'CNY',
+      "price": (priceUsd > 0 ? priceUsd : priceCny).toString(),
+      "availability": ogAvail,
+      "seller": {
+        "@type": "Organization",
+        "name": siteName
+      }
+    };
+  }
+  const data = {
+    "@context": "https://schema.org",
+    "@type": "Product",
+    "name": name,
+    "description": desc,
+    "image": image,
+    "url": window.location.href,
+    "sku": work.seo_slug_en || work.seo_slug_zh || work.id || String(name),
+    "brand": { "@type": "Organization", "name": siteName },
+  };
+  if (work.year)   data["productionDate"] = String(work.year);
+  if (work.size)   data["additionalProperty"] = [{ "@type": "PropertyValue", "name": "Size", "value": work.size }];
+  if (offer) data["offers"] = offer;
+  el.textContent = JSON.stringify(data);
+}
+
 function ensureMeta(name, attr = 'name') {
   let el = document.head.querySelector(`meta[${attr}="${name}"]`);
   if (!el) {
@@ -394,7 +545,6 @@ export default function App() {
   const [sendingMessage, setSendingMessage] = useState(false);
   const [messageBanner, setMessageBanner] = useState(null); // {level:'ok|warn|error', text}
   const [messages, setMessages] = useState([]);
-  const [selectedWork, setSelectedWork] = useState(null);
 
   function toastMessageBanner(level, text, duration = 7000) {
     setMessageBanner({ level, text });
@@ -541,6 +691,112 @@ export default function App() {
   const [works, setWorks] = useState(defaultWorks);
   const [socials, setSocials] = useState(defaultSocials);
 
+  const [hashRoute, setHashRoute] = useState(() => parseHash(window.location.hash));
+  const [workCurrency, setWorkCurrency] = useState('USD');
+  const [workGalleryImgIdx, setWorkGalleryImgIdx] = useState(0);
+  const [workLightboxOpen, setWorkLightboxOpen] = useState(false);
+  const [workDescFold, setWorkDescFold] = useState(true);
+  const [workProductFold, setWorkProductFold] = useState(false);
+  const [workCmsGoodsOpen, setWorkCmsGoodsOpen] = useState({});
+
+  function parseHash(hash) {
+    if (!hash) return { view: 'home', workId: null };
+    const raw = String(hash).replace(/^#/, '').trim();
+    const m = raw.match(/^\/work\/(.+)$/i);
+    if (m) return { view: 'work', workId: decodeURIComponent(m[1]).trim() };
+    return { view: 'home', workId: null };
+  }
+
+  function openWorkDetail(work) {
+    if (!work) return;
+    const slug = work.seo_slug_en || work.seo_slug_zh || slugifyForWork(work.title_en || work.title_zh) || work.id || null;
+    if (!slug) return;
+    setWorkGalleryImgIdx(0);
+    setWorkLightboxOpen(false);
+    setWorkDescFold(true);
+    setWorkProductFold(false);
+    window.location.hash = '#/work/' + encodeURIComponent(slug);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function closeWorkDetail() {
+    if (window.location.hash && /^#\/work\//i.test(window.location.hash)) {
+      history.replaceState(null, document.title, window.location.pathname + window.location.search + '#works');
+    }
+    setWorkLightboxOpen(false);
+  }
+
+  const selectedWork = useMemo(() => {
+    if (hashRoute.view !== 'work' || !hashRoute.workId) return null;
+    const slug = hashRoute.workId;
+    const found = works.find(w =>
+      (w.id && w.id === slug) ||
+      (w.seo_slug_en && w.seo_slug_en === slug) ||
+      (w.seo_slug_zh && w.seo_slug_zh === slug) ||
+      slugifyForWork(w.title_en || '') === slug ||
+      slugifyForWork(w.title_zh || '') === slug
+    );
+    return found || null;
+  }, [hashRoute, works]);
+
+  const workGallery = useMemo(() => {
+    if (!selectedWork) return [];
+    const primary = selectedWork.image || selectedWork.cover_image;
+    const details = Array.isArray(selectedWork.detail_images) ? selectedWork.detail_images.filter(Boolean) : [];
+    const ordered = [];
+    if (primary) ordered.push(primary);
+    details.forEach(u => { if (u && !ordered.includes(u)) ordered.push(u); });
+    return ordered;
+  }, [selectedWork]);
+
+  useEffect(() => {
+    function onHashChange() {
+      setHashRoute(parseHash(window.location.hash));
+      window.scrollTo({ top: 0, behavior: 'auto' });
+    }
+    window.addEventListener('hashchange', onHashChange);
+    return () => window.removeEventListener('hashchange', onHashChange);
+  }, []);
+
+  useEffect(() => {
+    setWorkGalleryImgIdx(0);
+    setWorkLightboxOpen(false);
+    setWorkDescFold(true);
+    setWorkProductFold(false);
+  }, [selectedWork?.id]);
+
+  function inquireWork(work) {
+    if (!work) return;
+    const wTitle = lang === 'en' ? (work.title_en || '') : (work.title_zh || '');
+    setContactPayload(p => ({
+      ...p,
+      inquiry_type: work.availability === 'exhibition' ? 'exhibition'
+                   : (work.availability === 'sold' || work.availability === 'reserved') ? 'collect'
+                   : 'collect',
+      message: (p.message ? p.message + '\n\n' : '') +
+               `[${lang === 'en' ? 'Inquiry about artwork' : '咨询作品'}] ${wTitle}${work.year ? ` · ${work.year}` : ''}${work.size ? ` · ${work.size}` : ''}`
+    }));
+    setTimeout(() => {
+      document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 80);
+  }
+
+  async function copyWorkInfo(work) {
+    try {
+      const wTitle = lang === 'en' ? (work.title_en || '') : (work.title_zh || '');
+      const material = lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '');
+      const lines = [wTitle, work.year ? work.year : '', work.size ? work.size : '', material ? material : ''];
+      if (Number(work.price_usd || 0) > 0) lines.push(lang === 'en' ? `USD $${Number(work.price_usd).toLocaleString()}` : `美元 ${Number(work.price_usd).toLocaleString()}`);
+      if (Number(work.price_cny || 0) > 0) lines.push(lang === 'en' ? `CNY ¥${Number(work.price_cny).toLocaleString()}` : `人民币 ${Number(work.price_cny).toLocaleString()}`);
+      lines.push(window.location.href);
+      const text = lines.filter(Boolean).join('\n');
+      if (navigator?.clipboard?.writeText) await navigator.clipboard.writeText(text);
+      toastMessageBanner('ok', currentT.workCopySuccess, 3000);
+    } catch (e) {
+      console.warn('copyWorkInfo failed', e);
+    }
+  }
+
   useEffect(() => {
     setAboutImageStatus({});
   }, [aboutData]);
@@ -595,6 +851,12 @@ export default function App() {
             ...item,
             image: normalizeImageUrl(item.image),
             cover_image: normalizeImageUrl(item.cover_image),
+            detail_images: Array.isArray(item.detail_images)
+              ? item.detail_images.map(u => normalizeImageUrl(u)).filter(Boolean)
+              : item.detail_images && typeof item.detail_images === 'string'
+                ? String(item.detail_images).split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(u => normalizeImageUrl(u))
+                : [],
+            availability: item.availability || 'available',
           })));
         }
 
@@ -634,6 +896,18 @@ export default function App() {
           material_en: rest.material_en ?? rest.material ?? null,
           image: normalizeImageUrl(rest.image),
           cover_image: normalizeImageUrl(rest.cover_image),
+          detail_images: Array.isArray(rest.detail_images)
+            ? rest.detail_images.map(u => normalizeImageUrl(u)).filter(Boolean)
+            : (rest.detail_images && typeof rest.detail_images === 'string'
+              ? String(rest.detail_images).split(/\r?\n/).map(s => s.trim()).filter(Boolean).map(u => normalizeImageUrl(u))
+              : []),
+          price_cny: rest.price_cny === '' || rest.price_cny === null || rest.price_cny === undefined ? null : Number(rest.price_cny) || 0,
+          price_usd: rest.price_usd === '' || rest.price_usd === null || rest.price_usd === undefined ? null : Number(rest.price_usd) || 0,
+          shipping_fee_cny: rest.shipping_fee_cny === '' || rest.shipping_fee_cny === null || rest.shipping_fee_cny === undefined ? 0 : Number(rest.shipping_fee_cny) || 0,
+          shipping_fee_usd: rest.shipping_fee_usd === '' || rest.shipping_fee_usd === null || rest.shipping_fee_usd === undefined ? 0 : Number(rest.shipping_fee_usd) || 0,
+          availability: rest.availability || 'available',
+          seo_slug_zh: rest.seo_slug_zh === '' ? null : (rest.seo_slug_zh || null),
+          seo_slug_en: rest.seo_slug_en === '' ? null : (rest.seo_slug_en || null),
         }));
         ensureSuccess(await supabase.from('works').insert(cleanWorks), 'Insert works failed');
       }
@@ -723,19 +997,42 @@ export default function App() {
     if (selectedWork) {
       const workTitle = selectedWork[lang === 'en' ? 'title_en' : 'title_zh'];
       const workYear = selectedWork.year;
+      const workSize = selectedWork.size;
       const workMaterial = selectedWork[lang === 'en' ? 'material_en' : 'material_zh'];
       const workDesc = selectedWork[lang === 'en' ? 'description_en' : 'description_zh'];
+      const avail = String(selectedWork.availability || 'available');
+      const availLabel =
+        avail === 'available'  ? currentT.workAvailabilityAvailable
+        : avail === 'reserved' ? currentT.workAvailabilityReserved
+        : avail === 'sold'     ? currentT.workAvailabilitySold
+        : avail === 'exhibition' ? currentT.workAvailabilityExhibition
+        : '';
       const brand = lang === 'en' ? 'Meet Lucy · Contemporary Ink Artist' : 'Lucy 坊 · 当代水墨艺术家';
-      const title = `${workTitle}${workYear ? ` · ${workYear}` : ''} | ${brand}`;
-      const description =
-        [workMaterial, workDesc].filter(Boolean).join(' — ') ||
+
+      const priceUsd = Number(selectedWork.price_usd || 0);
+      const priceCny = Number(selectedWork.price_cny || 0);
+      const primaryPrice = workCurrency === 'USD' && priceUsd > 0
+        ? currencyFormat(priceUsd, 'USD')
+        : priceCny > 0 ? currencyFormat(priceCny, 'CNY')
+        : priceUsd > 0 ? currencyFormat(priceUsd, 'USD')
+        : null;
+
+      const titleParts = [workTitle, workYear, workSize, primaryPrice || availLabel].filter(Boolean);
+      const title = `${titleParts.join(' · ')} | ${brand}`;
+
+      const descParts = [workMaterial, primaryPrice ? (lang === 'en' ? `Price ${primaryPrice}` : `售价 ${primaryPrice}`) : '', availLabel, workDesc].filter(Boolean);
+      const description = descParts.join(' — ') ||
         (lang === 'en'
           ? `Artwork details from Meet Lucy portfolio: ${workTitle || ''}`.trim()
           : `Lucy 坊作品详情：${workTitle || ''}`.trim());
+
       document.title = title;
       setMetaDescription(description);
       setOgTitleAndUrl(title);
+      setJsonLdProduct(selectedWork, lang);
       return;
+    } else {
+      setJsonLdProduct(null, lang);
     }
 
     const brandPart = SITE_TITLE_DEFAULT.split('|')[1]?.trim() || SITE_TITLE_DEFAULT;
@@ -746,7 +1043,7 @@ export default function App() {
     document.title = title;
     setMetaDescription(description);
     setOgTitleAndUrl(title);
-  }, [lang, aboutIdx, aboutData, selectedWork]);
+  }, [lang, aboutIdx, aboutData, selectedWork, workCurrency]);
 
   useEffect(() => {
     if (aboutData.length === 0) return;
@@ -1043,48 +1340,435 @@ export default function App() {
       </section>
 
       {/* 精选作品 (WORKS) */}
-      <section id="works" className="reveal-section relative py-24 md:py-48 px-6 md:px-20 bg-[#0a0a0a]">
-        <div className="max-w-7xl mx-auto space-y-12 relative z-10">
-          <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/20 pb-6">
-            <div>
-              <span className="text-amber-300 tracking-[0.4em] text-xs uppercase block font-medium">{currentT.worksTag}</span>
-              <h2 className="text-3xl md:text-5xl font-light text-white mt-1">{currentT.worksTitle}</h2>
+      <section id="works" className={`reveal-section relative px-6 md:px-20 bg-[#0a0a0a] ${selectedWork ? 'pt-24 pb-12 md:pt-36 md:pb-16' : 'py-24 md:py-48'}`}>
+        {!selectedWork && (
+          <div className="max-w-7xl mx-auto space-y-12 relative z-10">
+            <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 border-b border-white/20 pb-6">
+              <div>
+                <span className="text-amber-300 tracking-[0.4em] text-xs uppercase block font-medium">{currentT.worksTag}</span>
+                <h2 className="text-3xl md:text-5xl font-light text-white mt-1">{currentT.worksTitle}</h2>
+              </div>
+              <div className="flex flex-wrap gap-4 text-xs md:text-sm tracking-widest">
+                {[
+                  { key: 'all', label: currentT.allWorks }, 
+                  { key: 'shanshui', label: currentT.shanshui }, 
+                  { key: 'xiyi', label: currentT.xiyi }, 
+                  { key: 'modern', label: currentT.modern }
+                ].map(tab => (
+                  <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`pb-2 transition-all ${activeTab === tab.key ? 'text-amber-300 border-b-2 border-amber-300' : 'text-stone-400 hover:text-white'}`}>{tab.label}</button>
+                ))}
+              </div>
             </div>
-            <div className="flex flex-wrap gap-4 text-xs md:text-sm tracking-widest">
-              {[
-                { key: 'all', label: currentT.allWorks }, 
-                { key: 'shanshui', label: currentT.shanshui }, 
-                { key: 'xiyi', label: currentT.xiyi }, 
-                { key: 'modern', label: currentT.modern }
-              ].map(tab => (
-                <button key={tab.key} onClick={() => setActiveTab(tab.key)} className={`pb-2 transition-all ${activeTab === tab.key ? 'text-amber-300 border-b-2 border-amber-300' : 'text-stone-400 hover:text-white'}`}>{tab.label}</button>
-              ))}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+              {filteredWorks.map((work, idx) => {
+                const avail = String(work.availability || 'available');
+                const availLabel =
+                  avail === 'available' ? currentT.workAvailabilityAvailable :
+                  avail === 'reserved' ? currentT.workAvailabilityReserved :
+                  avail === 'sold' ? currentT.workAvailabilitySold :
+                  avail === 'exhibition' ? currentT.workAvailabilityExhibition : '';
+                const priceUsd = Number(work.price_usd || 0);
+                const priceCny = Number(work.price_cny || 0);
+                const showPrice = priceUsd > 0 ? currencyFormat(priceUsd, 'USD') : (priceCny > 0 ? currencyFormat(priceCny, 'CNY') : null);
+                return (
+                  <div key={idx} className="bg-[#161616] border border-white/10 rounded-sm overflow-hidden shadow-2xl flex flex-col justify-between group">
+                    <div>
+                      <div className="relative aspect-[4/3] overflow-hidden bg-black cursor-pointer" onClick={() => openWorkDetail(work)}>
+                        <img src={work.cover_image || work.image || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675'} alt={work.title_en} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
+                        <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 text-[11px] text-amber-200 rounded-sm">
+                          {lang === 'en' ? work.category_label_en : work.category_label_zh}
+                        </div>
+                        {availLabel && avail !== 'available' && (
+                          <div className={`absolute top-4 left-4 backdrop-blur-md px-3 py-1 text-[11px] rounded-sm ${avail === 'sold' ? 'bg-rose-950/80 text-rose-200 border border-rose-500/40' : avail === 'exhibition' ? 'bg-indigo-950/80 text-indigo-200 border border-indigo-500/40' : 'bg-amber-950/80 text-amber-200 border border-amber-500/40'}`}>
+                            {availLabel}
+                          </div>
+                        )}
+                        {showPrice && (
+                          <div className="absolute bottom-4 left-4 bg-black/70 backdrop-blur-md px-3 py-1.5 text-xs text-white rounded-sm border border-white/20">
+                            {showPrice}
+                          </div>
+                        )}
+                      </div>
+                      <div className="p-6 space-y-3">
+                        <div className="flex justify-between text-xs text-amber-200/90"><span>{work.year}</span><span>{work.size}</span></div>
+                        <h3 className="text-xl font-light text-white">{lang === 'en' ? work.title_en : work.title_zh}</h3>
+                        <p className="text-xs text-stone-400">{lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '')}</p>
+                        <p className="text-xs text-stone-300 font-light leading-relaxed pt-2 border-t border-white/10 line-clamp-3">
+                          {lang === 'en' ? work.description_en : work.description_zh}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="p-6 pt-0"><button onClick={() => openWorkDetail(work)} className="text-xs text-amber-300 inline-flex items-center gap-1 hover:text-white">{currentT.detailBtn} <ArrowUpRight size={14} /></button></div>
+                  </div>
+                );
+              })}
             </div>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            {filteredWorks.map((work, idx) => (
-              <div key={idx} className="bg-[#161616] border border-white/10 rounded-sm overflow-hidden shadow-2xl flex flex-col justify-between group">
-                <div>
-                  <div className="relative aspect-[4/3] overflow-hidden bg-black cursor-pointer" onClick={() => setSelectedWork(work)}>
-                    <img src={work.cover_image || work.image || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675'} alt={work.title_en} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-                    <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 text-[11px] text-amber-200 rounded-sm">
-                      {lang === 'en' ? work.category_label_en : work.category_label_zh}
+        )}
+
+        {selectedWork && (() => {
+          const work = selectedWork;
+          const wTitle = lang === 'en' ? (work.title_en || '') : (work.title_zh || '');
+          const wDesc = lang === 'en' ? (work.description_en || '') : (work.description_zh || '');
+          const wCat = lang === 'en' ? (work.category_label_en || work.category || '') : (work.category_label_zh || work.category || '');
+          const wMaterial = lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '');
+          const wShipMethods = lang === 'en' ? (work.shipping_methods_en || '') : (work.shipping_methods_zh || '');
+          const wFraming = lang === 'en' ? (work.framing_en || '') : (work.framing_zh || '');
+          const avail = String(work.availability || 'available');
+          const availLabel =
+            avail === 'available'  ? currentT.workAvailabilityAvailable :
+            avail === 'reserved'   ? currentT.workAvailabilityReserved :
+            avail === 'sold'       ? currentT.workAvailabilitySold :
+            avail === 'exhibition' ? currentT.workAvailabilityExhibition : '';
+          const availBadge =
+            avail === 'sold' ? 'bg-rose-950/80 text-rose-200 border-rose-500/40' :
+            avail === 'exhibition' ? 'bg-indigo-950/80 text-indigo-200 border-indigo-500/40' :
+            avail === 'reserved' ? 'bg-amber-950/80 text-amber-200 border-amber-500/40' :
+            'bg-emerald-950/80 text-emerald-200 border-emerald-500/40';
+          const priceUsd = Number(work.price_usd || 0);
+          const priceCny = Number(work.price_cny || 0);
+          const hasAnyPrice = priceUsd > 0 || priceCny > 0;
+          const primaryCurrency = workCurrency;
+          const primaryPriceAmt = primaryCurrency === 'USD' ? priceUsd : priceCny;
+          const altPriceAmt = primaryCurrency === 'USD' ? priceCny : priceUsd;
+          const primaryPriceStr = primaryPriceAmt > 0 ? currencyFormat(primaryPriceAmt, primaryCurrency) : null;
+          const altPriceStr = altPriceAmt > 0 ? currencyFormat(altPriceAmt, primaryCurrency === 'USD' ? 'CNY' : 'USD') : null;
+          const shipFeeUsd = Number(work.shipping_fee_usd || 0);
+          const shipFeeCny = Number(work.shipping_fee_cny || 0);
+          const shipFeeAmt = primaryCurrency === 'USD' ? shipFeeUsd : shipFeeCny;
+          const shipFeeStr = shipFeeAmt > 0 ? currencyFormat(shipFeeAmt, primaryCurrency) : null;
+          const hasShipFree = !shipFeeStr && (!shipFeeUsd && !shipFeeCny);
+
+          const ctaLabel =
+            avail === 'exhibition' ? currentT.workCtaExhibition :
+            avail === 'sold' ? currentT.workCtaCustomOrder :
+            avail === 'reserved' ? currentT.workCtaReserveNext :
+            hasAnyPrice ? currentT.workCtaInquire : currentT.workCtaInquire;
+
+          const gallery = workGallery;
+          const totalImages = gallery.length;
+          const currentImage = gallery[workGalleryImgIdx] || gallery[0] || '';
+
+          return (
+            <div className="max-w-7xl mx-auto relative z-10">
+              <div className="flex flex-wrap items-center justify-between gap-4 mb-6 md:mb-8">
+                <button onClick={closeWorkDetail} className="inline-flex items-center gap-2 text-stone-300 hover:text-amber-300 transition-colors text-sm md:text-base tracking-wider">
+                  <ChevronLeft size={18} />
+                  {currentT.workBackBtn}
+                </button>
+                <div className="flex items-center gap-2 md:gap-3">
+                  <button
+                    onClick={() => copyWorkInfo(work)}
+                    className="inline-flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 md:py-2 text-[11px] md:text-xs rounded-full border border-white/20 text-stone-300 hover:bg-white/10 hover:text-white transition-colors tracking-wider"
+                    title={currentT.workCtaCopyInfo}
+                  >
+                    <Copy size={13} />
+                    {currentT.workCtaCopyInfo}
+                  </button>
+                  <a
+                    href={currentImage ? currentImage : ''}
+                    target="_blank"
+                    rel="noreferrer"
+                    onClick={(e) => { if (!currentImage) e.preventDefault(); }}
+                    className="inline-flex items-center gap-1.5 px-3 md:px-3.5 py-1.5 md:py-2 text-[11px] md:text-xs rounded-full border border-amber-500/40 text-amber-200 hover:bg-amber-950/40 transition-colors tracking-wider"
+                    title={currentT.workViewOriginal}
+                  >
+                    <Search size={13} />
+                    {currentT.workViewOriginal}
+                  </a>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-6 md:gap-10 lg:gap-14">
+                <div className="lg:col-span-3 space-y-4">
+                  <div
+                    className="relative bg-black rounded-sm overflow-hidden aspect-square w-full select-none cursor-zoom-in"
+                    onClick={() => currentImage && setWorkLightboxOpen(true)}
+                  >
+                    <div className="lg:hidden absolute left-0 right-0 top-1/2 -translate-y-1/2 z-10 flex justify-between px-2 pointer-events-none">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.max(0, i - 1)); }}
+                        className="w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center pointer-events-auto backdrop-blur"
+                        aria-label="Previous image"
+                      >
+                        <ChevronLeft size={18} />
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.min(totalImages - 1, i + 1)); }}
+                        className="w-9 h-9 rounded-full bg-black/60 text-white flex items-center justify-center pointer-events-auto backdrop-blur"
+                        aria-label="Next image"
+                      >
+                        <ArrowUpRight size={18} />
+                      </button>
+                    </div>
+                    <div
+                      className="lg:hidden h-full w-full overflow-x-auto overflow-y-hidden snap-x snap-mandatory whitespace-nowrap no-scrollbar"
+                      style={{ WebkitOverflowScrolling: 'touch' }}
+                      onScroll={(e) => {
+                        const el = e.currentTarget;
+                        const idx = Math.round(el.scrollLeft / el.clientWidth);
+                        if (idx !== workGalleryImgIdx && idx >= 0 && idx < totalImages) {
+                          setWorkGalleryImgIdx(idx);
+                        }
+                      }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {gallery.map((u, i) => (
+                        <img
+                          key={i}
+                          src={u}
+                          alt={`${wTitle || 'Artwork'} ${i + 1}`}
+                          className="inline-block w-full h-full object-contain snap-center align-top"
+                          draggable={false}
+                        />
+                      ))}
+                    </div>
+                    <div className="hidden lg:block w-full h-full">
+                      {currentImage && (
+                        <ImageMagnifier src={currentImage} alt={wTitle || 'Artwork HD'} />
+                      )}
+                    </div>
+                    {totalImages > 0 && (
+                      <div className="absolute bottom-3 left-3 px-2.5 py-1 rounded-sm bg-black/65 text-white text-[11px] tracking-wider backdrop-blur">
+                        {currentT.workImageIndex.replace('{1}', String(workGalleryImgIdx + 1)).replace('{2}', String(totalImages))}
+                      </div>
+                    )}
+                  </div>
+                  {totalImages > 1 && (
+                    <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1 -mx-1 px-1">
+                      {gallery.map((u, i) => (
+                        <button
+                          key={i}
+                          onClick={() => setWorkGalleryImgIdx(i)}
+                          className={`shrink-0 w-16 md:w-20 h-16 md:h-20 rounded-sm border overflow-hidden bg-black transition-all ${i === workGalleryImgIdx ? 'border-amber-400 ring-2 ring-amber-400/40' : 'border-white/15 hover:border-white/40'}`}
+                          aria-label={`Thumbnail ${i + 1}`}
+                        >
+                          <img src={u} alt="" className="w-full h-full object-cover" />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="lg:col-span-2 lg:sticky lg:top-28 space-y-5 md:space-y-6 pb-32 lg:pb-8">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div className="space-y-2">
+                      <div className="flex flex-wrap gap-2">
+                        <span className="px-2.5 py-1 bg-amber-950/45 border border-amber-500/30 text-amber-300 text-[11px] rounded-sm tracking-wider">
+                          {wCat}
+                        </span>
+                        {availLabel && (
+                          <span className={`px-2.5 py-1 text-[11px] rounded-sm border tracking-wider ${availBadge}`}>
+                            {availLabel}
+                          </span>
+                        )}
+                      </div>
+                      <h1 className="text-2xl md:text-3xl lg:text-4xl font-light text-white leading-snug">
+                        {wTitle}
+                      </h1>
                     </div>
                   </div>
-                  <div className="p-6 space-y-3">
-                    <div className="flex justify-between text-xs text-amber-200/90"><span>{work.year}</span><span>{work.size}</span></div>
-                    <h3 className="text-xl font-light text-white">{lang === 'en' ? work.title_en : work.title_zh}</h3>
-                    <p className="text-xs text-stone-400">{lang === 'en' ? (work.material_en || work.material || '') : (work.material_zh || work.material || '')}</p>
-                    <p className="text-xs text-stone-300 font-light leading-relaxed pt-2 border-t border-white/10">
-                      {lang === 'en' ? work.description_en : work.description_zh}
-                    </p>
+
+                  <div className="space-y-2 text-sm text-stone-300">
+                    {(work.year || work.size || wMaterial) && (
+                      <ul className="divide-y divide-white/10 border-y border-white/10 py-2 space-y-2">
+                        {work.year && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Year' : '年份'}</span><span>{work.year}</span></li>}
+                        {work.size && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Size' : '尺寸'}</span><span>{work.size}</span></li>}
+                        {wMaterial && <li className="flex justify-between gap-4"><span className="text-stone-500 text-xs uppercase tracking-widest">{lang === 'en' ? 'Material' : '材质'}</span><span>{wMaterial}</span></li>}
+                      </ul>
+                    )}
+                  </div>
+
+                  <div className={`rounded-sm p-4 md:p-5 border space-y-3 ${hasAnyPrice ? 'bg-[#141414] border-amber-500/30' : 'bg-[#141414] border-white/10'}`}>
+                    <div className="flex items-center justify-between gap-3">
+                      <div className="inline-flex items-center gap-2 text-amber-300">
+                        <DollarSign size={16} />
+                        <span className="text-[11px] tracking-[0.25em] uppercase">{currentT.workProductTitle}</span>
+                      </div>
+                      {hasAnyPrice && (
+                        <div className="inline-flex rounded-full border border-white/20 overflow-hidden text-[11px] tracking-widest">
+                          <button
+                            onClick={() => setWorkCurrency('USD')}
+                            className={`px-3 py-1.5 transition-colors ${workCurrency === 'USD' ? 'bg-white text-black' : 'text-stone-300 hover:bg-white/10'}`}
+                          >
+                            USD
+                          </button>
+                          <button
+                            onClick={() => setWorkCurrency('CNY')}
+                            className={`px-3 py-1.5 transition-colors ${workCurrency === 'CNY' ? 'bg-white text-black' : 'text-stone-300 hover:bg-white/10'}`}
+                          >
+                            CNY
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                    {hasAnyPrice ? (
+                      <div className="space-y-2">
+                        <div className="flex items-baseline gap-3">
+                          <span className={`text-2xl md:text-3xl font-light ${avail === 'sold' ? 'line-through text-stone-500' : 'text-white'}`}>
+                            {primaryPriceStr || currencyFormat(priceUsd || priceCny, priceUsd > 0 ? 'USD' : 'CNY')}
+                          </span>
+                          {altPriceStr && (
+                            <span className="text-xs text-stone-500 tracking-wider">
+                              ≈ {altPriceStr}
+                            </span>
+                          )}
+                        </div>
+                        <div className="text-[11px] text-stone-500 flex items-center gap-1.5">
+                          <Tag size={12} />
+                          {primaryCurrency === 'USD' ? (lang === 'en' ? 'Prices in USD. All final transactions in agreed currency.' : '标价为美元，最终结算以双方确认币种为准。')
+                                                     : (lang === 'en' ? 'Prices in CNY. All final transactions in agreed currency.' : '标价为人民币，最终结算以双方确认币种为准。')}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="text-amber-200 text-sm tracking-wider font-light">
+                        {currentT.workPriceOnRequest}
+                      </div>
+                    )}
+
+                    <div className="space-y-2 pt-2 border-t border-white/10">
+                      <div className="flex items-center gap-2 text-xs text-stone-300">
+                        <Truck size={14} className="text-amber-300 shrink-0" />
+                        <span className="font-medium text-stone-200">{currentT.workShippingFee}</span>
+                        <span className="text-stone-400">
+                          {hasShipFree ? currentT.workShippingFree : shipFeeStr || (lang === 'en' ? 'Contact for rates' : '运费咨询')}
+                        </span>
+                      </div>
+                      {wShipMethods && (
+                        <div className="flex items-start gap-2 text-xs text-stone-300">
+                          <Package size={14} className="text-amber-300 shrink-0 mt-0.5" />
+                          <span className="font-medium text-stone-200 mr-1">{currentT.workShippingMethods}</span>
+                          <span className="text-stone-400 leading-relaxed">{wShipMethods}</span>
+                        </div>
+                      )}
+                      {wFraming && (
+                        <div className="flex items-start gap-2 text-xs text-stone-300">
+                          <Shuffle size={14} className="text-amber-300 shrink-0 mt-0.5" />
+                          <span className="font-medium text-stone-200 mr-1">{currentT.workFraming}</span>
+                          <span className="text-stone-400 leading-relaxed">{wFraming}</span>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="rounded-sm border border-white/10 bg-[#141414] overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setWorkProductFold(v => !v)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left"
+                      aria-expanded={!workProductFold}
+                    >
+                      <span className="inline-flex items-center gap-2 text-sm text-white tracking-wider">
+                        <Package size={16} className="text-amber-300" />
+                        {currentT.workDetailTitle}
+                      </span>
+                      <span className="text-stone-400">
+                        {workProductFold ? <ChevronDown size={18} /> : <ChevronUp size={18} />}
+                      </span>
+                    </button>
+                    {!workProductFold && (
+                      <div className="px-4 pb-4 pt-1 text-sm md:text-[15px] font-light text-stone-200 leading-loose tracking-wide">
+                        <div className={`${workDescFold ? 'line-clamp-4' : ''}`}>
+                          {wDesc ? wDesc.split(/\n/).filter(Boolean).map((line, i) => (
+                            <p key={i} className="mb-2 last:mb-0">{line}</p>
+                          )) : (
+                            <p className="text-stone-500 italic text-xs">{lang === 'en' ? 'No additional description.' : '暂无更多描述。'}</p>
+                          )}
+                        </div>
+                        {wDesc && (wDesc.length > 160 || wDesc.split(/\n/).length > 4) && (
+                          <button
+                            type="button"
+                            onClick={() => setWorkDescFold(v => !v)}
+                            className="mt-2 inline-flex items-center gap-1 text-xs text-amber-300 hover:text-amber-200 tracking-wider"
+                          >
+                            {workDescFold ? currentT.workDescMore : currentT.workDescLess}
+                            {workDescFold ? <ChevronDown size={14} /> : <ChevronUp size={14} />}
+                          </button>
+                        )}
+                      </div>
+                    )}
                   </div>
                 </div>
-                <div className="p-6 pt-0"><button onClick={() => setSelectedWork(work)} className="text-xs text-amber-300 inline-flex items-center gap-1 hover:text-white">{currentT.detailBtn} <ArrowUpRight size={14} /></button></div>
               </div>
-            ))}
-          </div>
-        </div>
+
+              <div className="fixed inset-x-0 bottom-0 z-[180] lg:hidden border-t border-white/15 bg-gradient-to-b from-black/70 via-black/85 to-[#0a0a0a] backdrop-blur-md">
+                <div className="max-w-7xl mx-auto px-6 py-3 flex items-center gap-3">
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-[11px] text-stone-400 tracking-wider">{wCat}{availLabel ? ` · ${availLabel}` : ''}</div>
+                    <div className="truncate text-sm text-white">{wTitle}</div>
+                  </div>
+                  <div className="flex items-center gap-2 shrink-0">
+                    <button
+                      onClick={() => currentImage && setWorkLightboxOpen(true)}
+                      className="h-10 w-10 inline-flex items-center justify-center rounded-full border border-white/20 text-stone-200 hover:bg-white/10"
+                      title={currentT.workViewOriginal}
+                      aria-label={currentT.workViewOriginal}
+                    >
+                      <Search size={16} />
+                    </button>
+                    <button
+                      onClick={() => inquireWork(work)}
+                      className={`h-10 px-4 md:px-5 inline-flex items-center gap-1.5 rounded-full tracking-[0.2em] text-xs font-medium transition-all ${
+                        avail === 'sold' ? 'bg-stone-700 text-stone-100 hover:bg-stone-600' :
+                        avail === 'exhibition' ? 'bg-indigo-700 text-white hover:bg-indigo-600' :
+                        'bg-amber-300 text-black hover:bg-amber-200'
+                      }`}
+                    >
+                      <ShoppingBag size={14} />
+                      {ctaLabel}
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {workLightboxOpen && currentImage && (
+                <div
+                  className="fixed inset-0 z-[220] bg-black/95 backdrop-blur-xl p-3 md:p-8 flex items-center justify-center animate-fadeIn"
+                  onClick={() => setWorkLightboxOpen(false)}
+                >
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setWorkLightboxOpen(false); }}
+                    className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/60 text-white hover:bg-white hover:text-black transition-colors"
+                    aria-label="Close lightbox"
+                  >
+                    <X size={18} />
+                  </button>
+                  <div className="absolute top-4 left-4 z-20 flex gap-2">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.max(0, i - 1)); }}
+                      className="p-2 rounded-full bg-black/60 text-white disabled:opacity-40 hover:bg-white hover:text-black transition-colors"
+                      disabled={workGalleryImgIdx <= 0}
+                      aria-label="Previous"
+                    >
+                      <ChevronLeft size={18} />
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setWorkGalleryImgIdx(i => Math.min(totalImages - 1, i + 1)); }}
+                      className="p-2 rounded-full bg-black/60 text-white disabled:opacity-40 hover:bg-white hover:text-black transition-colors"
+                      disabled={workGalleryImgIdx >= totalImages - 1}
+                      aria-label="Next"
+                    >
+                      <ArrowUpRight size={18} />
+                    </button>
+                  </div>
+                  <img
+                    src={currentImage}
+                    alt={wTitle || 'Artwork'}
+                    className="max-w-full max-h-full w-auto h-auto object-contain select-none touch-none"
+                    onClick={(e) => e.stopPropagation()}
+                    draggable={false}
+                    style={{ maxWidth: 'calc(100vw - 48px)', maxHeight: 'calc(100vh - 48px)' }}
+                  />
+                  {totalImages > 1 && (
+                    <div className="absolute bottom-5 left-1/2 -translate-x-1/2 px-3 py-1.5 rounded-full bg-black/70 text-white text-[11px] tracking-widest backdrop-blur">
+                      {workGalleryImgIdx + 1} / {totalImages}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          );
+        })()}
       </section>
 
       {/* 美育愿景 (VISION) */}
@@ -1267,29 +1951,6 @@ export default function App() {
           </button>
         </div>
       </footer>
-
-      {/* 原画弹窗（带放大镜特效） */}
-      {selectedWork && (
-        <div className="fixed inset-0 z-[200] bg-black/90 backdrop-blur-xl flex items-center justify-center p-4 md:p-10">
-          <div className="relative max-w-5xl w-full bg-[#141414] border border-amber-600/30 rounded-lg overflow-hidden flex flex-col lg:flex-row max-h-[90vh]">
-            <button onClick={() => setSelectedWork(null)} className="absolute top-4 right-4 z-20 p-2 rounded-full bg-black/60 text-white hover:bg-amber-300 hover:text-black"><X size={20} /></button>
-            <div className="lg:w-3/5 bg-black flex items-center justify-center p-4">
-              <ImageMagnifier src={selectedWork.image || selectedWork.cover_image} alt="Artwork HD" />
-            </div>
-            <div className="lg:w-2/5 p-6 md:p-10 flex flex-col justify-between space-y-6 overflow-y-auto">
-              <div className="space-y-4">
-                <span className="px-3 py-1 bg-amber-950/45 border border-amber-500/30 text-amber-300 text-xs rounded-sm">
-                  {lang === 'en' ? selectedWork.category_label_en : selectedWork.category_label_zh}
-                </span>
-                <h2 className="text-2xl font-light text-white">{lang === 'en' ? selectedWork.title_en : selectedWork.title_zh}</h2>
-                <p className="text-xs text-stone-400">{selectedWork.year} | {selectedWork.size}</p>
-                <p className="text-xs text-stone-300 pt-2 border-t border-white/10">{lang === 'en' ? (selectedWork.material_en || selectedWork.material || '') : (selectedWork.material_zh || selectedWork.material || '')}</p>
-                <p className="text-sm text-stone-200">{lang === 'en' ? selectedWork.description_en : selectedWork.description_zh}</p>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* 安全登录与管理后台抽屉面板 */}
       {isAdminOpen && (
@@ -1487,6 +2148,265 @@ export default function App() {
                             <textarea rows={2} placeholder="Description (EN)" value={work.description_en || ''} onChange={e => { const arr=[...works]; arr[idx].description_en = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
                             <textarea rows={2} placeholder="详细介绍 (中文)" value={work.description_zh || ''} onChange={e => { const arr=[...works]; arr[idx].description_zh = e.target.value; setWorks(arr); }} className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-none" />
                           </div>
+
+                          <details
+                            className={`border rounded-sm ${workCmsGoodsOpen[idx] ? 'border-amber-400/40' : 'border-white/10'} bg-black/40 overflow-hidden`}
+                            open={!!workCmsGoodsOpen[idx]}
+                            onToggle={(e) => { setWorkCmsGoodsOpen(prev => ({ ...prev, [idx]: e.currentTarget.open })); }}
+                          >
+                            <summary className="cursor-pointer select-none px-3 py-2 text-[11px] tracking-widest flex items-center justify-between gap-2 hover:bg-white/5 transition-colors list-none">
+                              <span className="inline-flex items-center gap-1.5 text-amber-200">
+                                <ShoppingBag size={13} />
+                                🛒 {lang === 'en' ? 'Commerce Fields · (Pricing / Shipping / Framing / Inventory / SEO slug)' : '商品字段 · （价格/运费/装裱/库存状态/SEO 链接 slug）'}
+                              </span>
+                              <span className="text-stone-500 text-[10px]">
+                                {workCmsGoodsOpen[idx] ? '▲' : '▼'}
+                              </span>
+                            </summary>
+                            <div className="p-3 md:p-4 border-t border-white/10 space-y-4">
+                              <div className="grid grid-cols-1 sm:grid-cols-5 gap-3 items-end">
+                                <div className="space-y-1 sm:col-span-2">
+                                  <div className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-stone-400">
+                                    <DollarSign size={11} className="text-amber-300" /> PRICE · 售价
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-stone-500 block mb-1">USD ($)</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="e.g. 1280"
+                                        value={work.price_usd === null || work.price_usd === undefined ? '' : work.price_usd}
+                                        onChange={e => {
+                                          const val = e.target.value;
+                                          const arr = [...works];
+                                          arr[idx].price_usd = val === '' ? null : (Number(val) || 0);
+                                          setWorks(arr);
+                                        }}
+                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-stone-500 block mb-1">CNY (¥)</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="e.g. 8800"
+                                        value={work.price_cny === null || work.price_cny === undefined ? '' : work.price_cny}
+                                        onChange={e => {
+                                          const val = e.target.value;
+                                          const arr = [...works];
+                                          arr[idx].price_cny = val === '' ? null : (Number(val) || 0);
+                                          setWorks(arr);
+                                        }}
+                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1 sm:col-span-2">
+                                  <div className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-stone-400">
+                                    <Truck size={11} className="text-amber-300" /> SHIPPING · 运费
+                                  </div>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <div>
+                                      <label className="text-[10px] text-stone-500 block mb-1">Fee USD</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0 = Free"
+                                        value={work.shipping_fee_usd === null || work.shipping_fee_usd === undefined ? '' : work.shipping_fee_usd}
+                                        onChange={e => {
+                                          const val = e.target.value;
+                                          const arr = [...works];
+                                          arr[idx].shipping_fee_usd = val === '' ? 0 : (Number(val) || 0);
+                                          setWorks(arr);
+                                        }}
+                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      />
+                                    </div>
+                                    <div>
+                                      <label className="text-[10px] text-stone-500 block mb-1">运费 人民币</label>
+                                      <input
+                                        type="number"
+                                        min="0"
+                                        step="0.01"
+                                        placeholder="0 = 包邮"
+                                        value={work.shipping_fee_cny === null || work.shipping_fee_cny === undefined ? '' : work.shipping_fee_cny}
+                                        onChange={e => {
+                                          const val = e.target.value;
+                                          const arr = [...works];
+                                          arr[idx].shipping_fee_cny = val === '' ? 0 : (Number(val) || 0);
+                                          setWorks(arr);
+                                        }}
+                                        className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                      />
+                                    </div>
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <div className="flex items-center gap-1 text-[10px] tracking-widest uppercase text-stone-400">
+                                    <Tag size={11} className="text-amber-300" /> INVENTORY · 状态
+                                  </div>
+                                  <label className="text-[10px] text-stone-500 block mb-1">{lang === 'en' ? 'Availability' : '库存 / 展示状态'}</label>
+                                  <select
+                                    value={work.availability || 'available'}
+                                    onChange={e => { const arr=[...works]; arr[idx].availability = e.target.value; setWorks(arr); }}
+                                    className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                  >
+                                    {AVAILABILITY_OPTIONS.map(opt => (
+                                      <option key={opt.value} value={opt.value}>
+                                        {opt.value === 'available'  ? (lang === 'en' ? 'Available · 在售' : 'Available · 在售') :
+                                         opt.value === 'reserved'   ? (lang === 'en' ? 'Reserved · 已留' : 'Reserved · 已留') :
+                                         opt.value === 'sold'       ? (lang === 'en' ? 'Sold · 已售' : 'Sold · 已售') :
+                                         (lang === 'en' ? 'Exhibition · 展出' : 'Exhibition · 展出')}
+                                      </option>
+                                    ))}
+                                  </select>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] tracking-widest uppercase text-stone-400 flex items-center gap-1">
+                                    <Package size={11} className="text-amber-300" /> {lang === 'en' ? 'Shipping Methods · 发货方式（双语）' : '发货方式 Shipping Methods（双语）'}
+                                  </label>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. DHL International, 5-10 days"
+                                      value={work.shipping_methods_en || ''}
+                                      onChange={e => { const arr=[...works]; arr[idx].shipping_methods_en = e.target.value; setWorks(arr); }}
+                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="例如：顺丰 / DHL 国际 5-10 工作日"
+                                      value={work.shipping_methods_zh || ''}
+                                      onChange={e => { const arr=[...works]; arr[idx].shipping_methods_zh = e.target.value; setWorks(arr); }}
+                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="space-y-1">
+                                  <label className="text-[10px] tracking-widest uppercase text-stone-400 flex items-center gap-1">
+                                    <Shuffle size={11} className="text-amber-300" /> {lang === 'en' ? 'Framing · 装裱方式（双语）' : '装裱方式 Framing（双语）'}
+                                  </label>
+                                  <div className="grid grid-cols-2 gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. Unframed · Rolled (default)"
+                                      value={work.framing_en || ''}
+                                      onChange={e => { const arr=[...works]; arr[idx].framing_en = e.target.value; setWorks(arr); }}
+                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                    />
+                                    <input
+                                      type="text"
+                                      placeholder="例如：未装裱 · 卷筒（默认）/ 可定制实木框"
+                                      value={work.framing_zh || ''}
+                                      onChange={e => { const arr=[...works]; arr[idx].framing_zh = e.target.value; setWorks(arr); }}
+                                      className="bg-black border border-white/20 p-2 text-xs text-white rounded-sm"
+                                    />
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="space-y-1.5">
+                                <label className="text-[10px] tracking-widest uppercase text-stone-400 flex items-center gap-1">
+                                  <Search size={11} className="text-amber-300" /> {lang === 'en' ? 'Detail Images · 细节图 URL（每行 1 条）' : '细节图 Detail Images URL（每行 1 条）'}
+                                </label>
+                                <textarea
+                                  rows={3}
+                                  placeholder={lang === 'en'
+                                    ? 'One image URL per line, these will show in the carousel right after main HD image.'
+                                    : '每行粘贴一张细节图 URL，详情页大图后自动轮播展示；所有图片自动走 CDN。'}
+                                  value={Array.isArray(work.detail_images) ? work.detail_images.join('\n') : (work.detail_images || '')}
+                                  onChange={e => {
+                                    const urls = e.target.value.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                                    const arr = [...works];
+                                    arr[idx].detail_images = urls;
+                                    setWorks(arr);
+                                  }}
+                                  className="w-full bg-black border border-white/20 p-2 text-xs text-white rounded-sm resize-y font-mono leading-relaxed"
+                                />
+                                <div className="flex items-center justify-between text-[10px] text-stone-500 tracking-wider">
+                                  <span>{lang === 'en' ? 'Images (after main):' : '细节图数量：'} {(Array.isArray(work.detail_images) ? work.detail_images.filter(Boolean).length : 0)}</span>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      const arr = [...works];
+                                      const raw = Array.isArray(arr[idx].detail_images) ? arr[idx].detail_images.join('\n') : String(arr[idx].detail_images || '');
+                                      arr[idx].detail_images = raw.split(/\r?\n/).map(s => normalizeImageUrl(s)).filter(Boolean);
+                                      setWorks(arr);
+                                      toastMessageBanner('ok', lang === 'en' ? 'Detail images CDN normalized.' : '细节图 CDN 域名已统一替换。', 2500);
+                                    }}
+                                    className="text-amber-300/90 hover:text-amber-200 underline-offset-2 hover:underline"
+                                  >
+                                    {lang === 'en' ? '✓ Normalize → img.meetlucy.shop' : '✓ 一键替换为 CDN 域名'}
+                                  </button>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                <div className="space-y-1">
+                                  <label className="text-[10px] tracking-widest uppercase text-stone-400">
+                                    {lang === 'en' ? 'SEO Slug · EN URL (#/work/xxx)' : 'SEO 链接 · 英文 Slug（#/work/xxx）'}
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder="e.g. mountain-spirit-no3"
+                                      value={work.seo_slug_en || ''}
+                                      onChange={e => { const arr=[...works]; arr[idx].seo_slug_en = e.target.value; setWorks(arr); }}
+                                      className="flex-1 bg-black border border-white/20 p-2 text-xs text-white rounded-sm font-mono"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const arr = [...works];
+                                        arr[idx].seo_slug_en = slugifyForWork(arr[idx].title_en || arr[idx].title_zh || '');
+                                        setWorks(arr);
+                                      }}
+                                      className="shrink-0 px-2 py-1 text-[10px] rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-950/40 tracking-wider whitespace-nowrap"
+                                    >
+                                      {lang === 'en' ? 'Auto from title' : '按标题自动生成'}
+                                    </button>
+                                  </div>
+                                </div>
+                                <div className="space-y-1">
+                                  <label className="text-[10px] tracking-widest uppercase text-stone-400">
+                                    {lang === 'en' ? 'SEO Slug · ZH (optional)' : 'SEO 链接 · 中文 Slug（可选）'}
+                                  </label>
+                                  <div className="flex gap-2">
+                                    <input
+                                      type="text"
+                                      placeholder={lang === 'en' ? 'Optional: Chinese-friendly slug' : '可选：中文友好 URL（留空则用 EN/标题生成）'}
+                                      value={work.seo_slug_zh || ''}
+                                      onChange={e => { const arr=[...works]; arr[idx].seo_slug_zh = e.target.value; setWorks(arr); }}
+                                      className="flex-1 bg-black border border-white/20 p-2 text-xs text-white rounded-sm font-mono"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        const arr = [...works];
+                                        arr[idx].seo_slug_zh = slugifyForWork(arr[idx].title_zh || arr[idx].title_en || '');
+                                        setWorks(arr);
+                                      }}
+                                      className="shrink-0 px-2 py-1 text-[10px] rounded-sm border border-amber-400/40 text-amber-200 hover:bg-amber-950/40 tracking-wider whitespace-nowrap"
+                                    >
+                                      {lang === 'en' ? 'Auto' : '自动生成'}
+                                    </button>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </details>
                         </div>
                       ))}
                     </div>
