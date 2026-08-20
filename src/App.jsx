@@ -1769,7 +1769,7 @@ export default function App() {
                 return (
                   <div key={idx} className="bg-[#161616] border border-white/10 rounded-sm overflow-hidden shadow-2xl flex flex-col justify-between group">
                     <div>
-                      <div className="relative aspect-[4/3] overflow-hidden bg-black cursor-pointer" onClick={() => openWorkDetail(work)}>
+                      <div className="relative aspect-[4/4] overflow-hidden bg-black cursor-pointer" onClick={() => openWorkDetail(work)}>
                         <img src={work.cover_image || work.image || 'https://images.unsplash.com/photo-1579783902614-a3fb3927b675'} alt={work.title_en} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
                         <div className="absolute top-4 right-4 bg-black/60 backdrop-blur-md px-3 py-1 text-[11px] text-amber-200 rounded-sm">
                           {lang === 'en' ? work.category_label_en : work.category_label_zh}
